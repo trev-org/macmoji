@@ -28,7 +28,13 @@ public struct EmojiStore: Sendable {
 
     /// The emoji database bundled in this package's resources.
     public static func bundled() throws -> EmojiStore {
-        guard let url = Bundle.module.url(forResource: "emoji", withExtension: "json") else {
+        // Inside a SwiftPM-assembled .app the resource bundle lives in Contents/Resources;
+        // look there first so we never depend on SwiftPM's build-directory fallback path.
+        let appBundled = Bundle.main.resourceURL
+            .map { $0.appendingPathComponent("MacmojiCore_MacmojiCore.bundle") }
+            .flatMap(Bundle.init(url:))?
+            .url(forResource: "emoji", withExtension: "json")
+        guard let url = appBundled ?? Bundle.module.url(forResource: "emoji", withExtension: "json") else {
             throw CocoaError(.fileNoSuchFile)
         }
         return try EmojiStore(jsonData: Data(contentsOf: url))
