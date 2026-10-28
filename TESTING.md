@@ -11,6 +11,16 @@ CI cannot grant Accessibility to a custom app, so everything below is manual.
 ## Manual checklist (run on the bundled, signed app; not `swift run`)
 Run from Xcode (Debug logs the caret source per app in Console: filter on `macmoji`).
 
+### DMG
+- [ ] `scripts/make-dmg.sh` finishes and writes `dist/Macmoji-0.1.0.dmg`; without signing env vars it prints the Gatekeeper note.
+- [ ] Opening the DMG shows a 660×400 window, no toolbar/status bar, background with arrow and "Drag to Applications", Macmoji icon left and Applications alias right, both on the arrow line; sharp on a Retina display.
+- [ ] Volume icon in Finder sidebar/desktop is the macmoji icon; app icon shows in Finder, Dock-less app switcher and Applications.
+- [ ] Dragging to Applications copies it; launching from /Applications shows setup.
+- [ ] Fallback path: with create-dmg uninstalled the layout is the same.
+- [ ] With `DEVELOPER_ID_APPLICATION` + `NOTARY_PROFILE`: `spctl -a -vv /Applications/Macmoji.app` says "accepted, source=Notarized Developer ID"; `codesign -dv` shows `flags=0x10000(runtime)`; event tap + insertion still work with the hardened runtime.
+- [ ] On a second Mac, the unsigned DMG shows the Gatekeeper warning (expected) and the notarized one opens cleanly.
+- [ ] Release DMG workflow (tag or manual run) uploads a `Macmoji-dmg` artifact.
+
 ### First-run onboarding
 Reset first: `defaults delete com.trevorgerald.macmoji` and
 `tccutil reset Accessibility com.trevorgerald.macmoji`.

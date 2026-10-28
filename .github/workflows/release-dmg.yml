@@ -1,0 +1,50 @@
+name: Release DMG
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  dmg:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install xcodegen create-dmg
+      # Optional signing. Add these repository secrets to get a signed + notarized DMG:
+      #   MACOS_CERT_P12_BASE64   base64 of a Developer ID Application .p12
+      #   MACOS_CERT_PASSWORD     its password
+      #   DEVELOPER_ID_APPLICATION  e.g. "Developer ID Application: Trevor Gerald (ABCDE12345)"
+      #   NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD (app-specific password)
+      - name: Import signing certificate (optional)
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+        run: |
+          if [ -z "$MACOS_CERT_P12_BASE64" ]; then echo "No signing secrets: building an ad-hoc DMG"; exit 0; fi
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KC_PASS="$(uuidgen)"
+          echo "$MACOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KC_PASS" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          echo "DEVELOPER_ID_APPLICATION=$DEVELOPER_ID_APPLICATION" >> "$GITHUB_ENV"
+          if [ -n "$NOTARY_APPLE_ID" ]; then
+            xcrun notarytool store-credentials macmoji-notary --apple-id "$NOTARY_APPLE_ID" \
+              --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --keychain "$KEYCHAIN"
+            echo "NOTARY_PROFILE=macmoji-notary" >> "$GITHUB_ENV"
+          fi
+      - name: Build DMG
+        run: scripts/make-dmg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Macmoji-dmg
+          path: dist/*.dmg
+          if-no-files-found: error
