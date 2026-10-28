@@ -1,0 +1,112 @@
+# macmoji
+
+A macOS menu-bar utility that gives Slack-style `:` emoji autocomplete in any app.
+Type `:` and a couple of letters (`:thu`) and a small picker pops up next to the text cursor;
+↑/↓ to choose, Enter or Tab to insert, Esc to dismiss. The typed `:shortcode` is replaced with
+the emoji. Typing a full `:fire:` replaces it automatically.
+
+Status: **M1 prototype.** The core logic is unit-tested; the macOS app code has not yet been
+compiled or run (it was written on Linux). See [TESTING.md](TESTING.md) and the
+plan in [docs/PLAN.md](docs/PLAN.md).
+
+- macOS 14+, menu bar only (no Dock icon), not sandboxed, not for the App Store.
+- One permission: **Accessibility**.
+- Off by default in Slack and Discord (they have their own picker); never active in password
+  fields / while secure input is on.
+- Emoji data: [emojibase-data](https://github.com/milesj/emojibase) v18 (MIT), Slack (iamcal)
+  shortcodes first, GitHub names as aliases, emojibase tags as search keywords.
+
+## Layout
+```
+project.yml                  XcodeGen spec (the .xcodeproj is generated, not committed)
+Config/Signing.xcconfig      signing defaults; put your team in Config/Signing.local.xcconfig
+App/Sources/                 the macOS app (AppKit / SwiftUI / ApplicationServices / CoreGraphics)
+App/Resources/               Info.plist (LSUIElement), entitlements (no sandbox)
+MacmojiCore/                 portable Swift package: emoji data, search & ranking, trigger state machine + tests
+scripts/gen-emoji.mjs        regenerates MacmojiCore/.../Resources/emoji.json from emojibase-data
+.github/workflows/ci.yml     macOS CI: generate, build, test
+```
+
+## Build and run on a Mac
+Requirements: macOS 14+, Xcode 15.3+ (Swift 5.10+), Homebrew.
+
+```sh
+brew install xcodegen
+git clone https://github.com/trev-org/macmoji.git && cd macmoji
+# (recommended) set up signing first, see "Signing" below
+xcodegen generate
+open Macmoji.xcodeproj
+```
+In Xcode pick the **Macmoji** scheme and **My Mac**, then Run (⌘R). A smiley appears in the
+menu bar. Or from the command line:
+```sh
+xcodebuild -project Macmoji.xcodeproj -scheme Macmoji -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/Macmoji.app
+```
+Unit tests: `cd MacmojiCore && swift test`.
+
+Always test the bundled `Macmoji.app`. Running core code through `swift run` or a terminal
+would attribute permissions to Terminal instead.
+
+## Granting Accessibility
+On first launch macmoji shows a welcome window.
+1. Click **Request Access**, then **Open System Settings**
+   (System Settings → Privacy & Security → Accessibility).
+2. Turn on **Macmoji** (use **+** to add it from `build/Build/Products/Debug/` or Xcode's
+   DerivedData if it is not listed).
+3. The window closes by itself within a second and the menu shows "Active".
+
+If it stays inactive: remove the Macmoji entry with **–**, add it again, and relaunch.
+Reset it completely with `tccutil reset Accessibility com.trevorgerald.macmoji`.
+
+## Signing (so the permission survives rebuilds)
+macOS ties the Accessibility grant to the app's code signature. The default config signs
+ad hoc (`-`), whose identity changes on every build, so you would have to re-grant after
+each rebuild. Use an **Apple Development** certificate (a free Apple ID works):
+
+1. Xcode → Settings → Accounts → add your Apple ID → Manage Certificates → **+** →
+   Apple Development.
+2. Find your Team ID: `security find-identity -v -p codesigning` shows
+   `Apple Development: Name (XXXXXXXXXX)`; the Team ID is on developer.apple.com → Membership,
+   or in Xcode's Signing & Capabilities team list.
+3. Create `Config/Signing.local.xcconfig` (gitignored):
+   ```
+   CODE_SIGN_STYLE = Automatic
+   CODE_SIGN_IDENTITY = Apple Development
+   DEVELOPMENT_TEAM = XXXXXXXXXX
+   ```
+4. `xcodegen generate`, build, grant Accessibility once. Later rebuilds keep the grant.
+   Check with `codesign -dv --verbose=2 build/Build/Products/Debug/Macmoji.app`.
+
+If you switch identities, re-grant once (or `tccutil reset` as above). Developer ID signing and
+notarization only matter if you distribute it to others.
+
+## Settings
+Menu bar → Settings…: enable/disable, default skin tone, the per-app blocklist (bundle IDs;
+Slack and Discord by default) and "paste mode" apps (Terminal and iTerm2 by default), where the
+emoji is inserted by a clipboard paste that saves and restores your clipboard. Usage counts for
+ranking are stored in `~/Library/Application Support/macmoji/usage.json`.
+
+## Regenerating emoji data
+```sh
+cd scripts && npm install && node gen-emoji.mjs
+```
+Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
+
+## How it works
+- A single blocking `CGEventTap` (session, keyDown and mouse-down) feeds typed characters to
+  `TriggerStateMachine` (MacmojiCore). It never swallows `:` or letters; while the picker is open
+  it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
+- Trigger rules: `:` counts only at the start of text or after whitespace, `(` or `[`; the picker
+  opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.
+- Ranking: exact name → prefix → substring → fuzzy subsequence → keyword; frecency boost within
+  each tier.
+- The picker is a non-activating `NSPanel` hosting SwiftUI, placed via
+  `kAXBoundsForRangeParameterizedAttribute`, falling back to the focused element's frame and
+  then the mouse. Electron apps get `AXManualAccessibility = true`.
+- Insertion: synthesized Backspaces, then `CGEvent.keyboardSetUnicodeString`, or a
+  clipboard paste in paste-mode apps. Synthesized events are tagged so the tap ignores them.
+
+## Credits
+Emoji data from emojibase-data (MIT, © Miles Johnson). Shortcodes from emojibase's iamcal and
+GitHub presets.
