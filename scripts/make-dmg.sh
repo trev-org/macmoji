@@ -5,6 +5,7 @@
 # Usage:
 #   scripts/make-dmg.sh                 # build Release via xcodegen + xcodebuild, then package
 #   scripts/make-dmg.sh path/to/Macmoji.app   # package an already-built app
+#   scripts/make-dmg.sh --swiftpm       # no Xcode: build with scripts/build-app.sh (SwiftPM), then package
 #
 # Optional environment:
 #   DEVELOPER_ID_APPLICATION  e.g. "Developer ID Application: Trevor Gerald (ABCDE12345)".
@@ -33,7 +34,11 @@ APP_X=180; APPS_X=480; ICON_Y=190
 log() { printf '==> %s\n' "$*"; }
 
 # 1. Get the app.
-if [[ $# -ge 1 ]]; then
+if [[ "${1:-}" == "--swiftpm" ]] || { [[ $# -eq 0 ]] && ! xcodebuild -version >/dev/null 2>&1; }; then
+  log "Building with SwiftPM (scripts/build-app.sh)"
+  "$ROOT/scripts/build-app.sh"
+  APP="$BUILD/Macmoji.app"
+elif [[ $# -ge 1 ]]; then
   APP="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 else
   command -v xcodegen >/dev/null || { echo "error: brew install xcodegen" >&2; exit 1; }
@@ -66,7 +71,7 @@ if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
   SIGNED=1
 else
   log "DEVELOPER_ID_APPLICATION not set: ad-hoc signing"
-  codesign --force --deep --sign - "$APP"
+  codesign --force --deep --sign - --entitlements "$ROOT/App/Resources/Macmoji.entitlements" "$APP"
 fi
 
 # 3. Stage.
