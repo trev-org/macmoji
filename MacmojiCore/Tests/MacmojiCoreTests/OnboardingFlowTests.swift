@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MacmojiCore
 
-final class OnboardingFlowTests: XCTestCase {
-    func testOrderAndBounds() {
+@Suite struct OnboardingFlowTests {
+    @Test func testOrderAndBounds() {
         var f = OnboardingFlow()
         XCTAssertEqual(f.steps, [.skinTone, .launchAtLogin, .accessibility, .finish])
         XCTAssertEqual(f.current, .skinTone)
@@ -14,7 +15,7 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertEqual(f.current, .skinTone)
     }
 
-    func testAccessibilityBlocksNextUntilGranted() {
+    @Test func testAccessibilityBlocksNextUntilGranted() {
         var f = OnboardingFlow()
         f.next(accessibilityGranted: false); f.next(accessibilityGranted: false)
         XCTAssertEqual(f.current, .accessibility)
@@ -24,7 +25,7 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertTrue(f.canGoNext(accessibilityGranted: true))
     }
 
-    func testAutoAdvanceOnGrantOnlyOnAccessibilityStep() {
+    @Test func testAutoAdvanceOnGrantOnlyOnAccessibilityStep() {
         var f = OnboardingFlow()
         XCTAssertFalse(f.accessibilityChanged(granted: true)) // on skin tone: no jump
         XCTAssertEqual(f.current, .skinTone)
@@ -37,14 +38,14 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertEqual(f.position, 4)
     }
 
-    func testBackFromFinish() {
+    @Test func testBackFromFinish() {
         var f = OnboardingFlow()
         for _ in 0..<3 { f.next(accessibilityGranted: true) }
         XCTAssertTrue(f.back())
         XCTAssertEqual(f.current, .accessibility)
     }
 
-    func testLaunchDecision() {
+    @Test func testLaunchDecision() {
         XCTAssertEqual(LaunchDecision.decide(onboardingCompleted: false, accessibilityGranted: true), .onboarding)
         XCTAssertEqual(LaunchDecision.decide(onboardingCompleted: false, accessibilityGranted: false), .onboarding)
         XCTAssertEqual(LaunchDecision.decide(onboardingCompleted: true, accessibilityGranted: true), .run)

@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MacmojiCore
 
-final class EmojiSearchTests: XCTestCase {
+@Suite struct EmojiSearchTests {
     static let bundled = try! EmojiStore.bundled()
 
-    func testBundledDataIntegrity() throws {
+    @Test func testBundledDataIntegrity() throws {
         let store = Self.bundled
         XCTAssertTrue(store.source.hasPrefix("emojibase-data 18"), store.source)
         XCTAssertGreaterThan(store.emoji.count, 1800)
@@ -20,7 +21,7 @@ final class EmojiSearchTests: XCTestCase {
         }
     }
 
-    func testSlackNamesAndGitHubAliases() {
+    @Test func testSlackNamesAndGitHubAliases() {
         let store = Self.bundled
         XCTAssertEqual(store.emoji(named: "+1")?.emoji, "👍")
         XCTAssertEqual(store.emoji(named: "thumbsup")?.emoji, "👍")
@@ -29,7 +30,7 @@ final class EmojiSearchTests: XCTestCase {
         XCTAssertEqual(store.emoji(named: "tada")?.emoji, "🎉")
     }
 
-    func testSkinTone() {
+    @Test func testSkinTone() {
         let thumbs = Self.bundled.emoji(named: "+1")!
         XCTAssertEqual(thumbs.rendered(tone: .none), "👍")
         XCTAssertEqual(thumbs.rendered(tone: .medium), "👍🏽")
@@ -45,13 +46,13 @@ final class EmojiSearchTests: XCTestCase {
         Emoji(emoji: "F", names: ["heart"], keywords: ["thumbprint"], order: 6),
     ])
 
-    func testTierOrder() {
+    @Test func testTierOrder() {
         let r = EmojiSearch(store: small).search("thu", limit: 10)
         XCTAssertEqual(r.map(\.emoji.emoji), ["C", "A", "B", "D", "E", "F"])
         XCTAssertEqual(r.map(\.tier), [.exact, .prefix, .prefix, .substring, .fuzzy, .keyword])
     }
 
-    func testFrecencyBoostsWithinTierOnly() {
+    @Test func testFrecencyBoostsWithinTierOnly() {
         let clock = Clock()
         let usage = UsageStore(fileURL: nil, now: { clock.now })
         usage.record("B"); usage.record("B")
@@ -61,7 +62,7 @@ final class EmojiSearchTests: XCTestCase {
         XCTAssertEqual(r.map(\.emoji.emoji), ["C", "B", "A", "D", "E", "F"])
     }
 
-    func testFrecencyDecay() {
+    @Test func testFrecencyDecay() {
         let clock = Clock()
         let usage = UsageStore(fileURL: nil, now: { clock.now })
         usage.record("A")
@@ -71,7 +72,7 @@ final class EmojiSearchTests: XCTestCase {
         XCTAssertEqual(usage.score("Z"), 0)
     }
 
-    func testUsagePersists() throws {
+    @Test func testUsagePersists() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString).appendingPathComponent("usage.json")
         UsageStore(fileURL: url).record("🔥")
@@ -79,7 +80,7 @@ final class EmojiSearchTests: XCTestCase {
         try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }
 
-    func testRealDataRanking() {
+    @Test func testRealDataRanking() {
         let s = EmojiSearch(store: Self.bundled)
         XCTAssertEqual(s.search("fire").first?.emoji.emoji, "🔥")
         XCTAssertEqual(s.search("+1").first?.emoji.emoji, "👍")
@@ -89,7 +90,7 @@ final class EmojiSearchTests: XCTestCase {
         XCTAssertLessThanOrEqual(s.search("a").count, 8)
     }
 
-    func testSubsequence() {
+    @Test func testSubsequence() {
         XCTAssertTrue(EmojiSearch.isSubsequence("tu", of: "thumbsup"))
         XCTAssertFalse(EmojiSearch.isSubsequence("ut", of: "tu"))
     }
