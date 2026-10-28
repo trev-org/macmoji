@@ -27,6 +27,10 @@ final class AppSettings: ObservableObject {
     @Published var blocklist: [String] { didSet { defaults.set(blocklist, forKey: "blocklist") } }
     @Published var pasteModeApps: [String] { didSet { defaults.set(pasteModeApps, forKey: "pasteModeApps") } }
     @Published var skinTone: SkinTone { didSet { defaults.set(skinTone.rawValue, forKey: "skinTone") } }
+    /// Set only when the user finishes onboarding (closing it partway leaves this false).
+    @Published var onboardingCompleted: Bool {
+        didSet { defaults.set(onboardingCompleted, forKey: OnboardingFlow.completedDefaultsKey) }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -40,6 +44,7 @@ final class AppSettings: ObservableObject {
         blocklist = defaults.stringArray(forKey: "blocklist") ?? Self.defaultBlocklist
         pasteModeApps = defaults.stringArray(forKey: "pasteModeApps") ?? Self.defaultPasteModeApps
         skinTone = SkinTone(rawValue: defaults.integer(forKey: "skinTone")) ?? .none
+        onboardingCompleted = defaults.bool(forKey: OnboardingFlow.completedDefaultsKey)
     }
 
     func isBlocked(_ bundleID: String?) -> Bool {

@@ -10,9 +10,10 @@ struct MenuContent: View {
         Text(controller.statusText)
         Divider()
         Toggle("Enabled", isOn: $settings.enabled)
-        if !controller.isTrusted {
-            Button("Grant Accessibility…") { controller.showOnboarding() }
+        if !controller.isTrusted && controller.hasStarted {
+            Button("Grant Accessibility…") { controller.showPermissionPrompt() }
         }
+        Button("Run setup again…") { controller.showSetup() }
         SettingsLink { Text("Settings…") }
             .keyboardShortcut(",")
         Divider()

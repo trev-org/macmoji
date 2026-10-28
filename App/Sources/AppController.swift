@@ -12,9 +12,12 @@ final class AppController: ObservableObject {
 
     @Published private(set) var isTrusted = AXIsProcessTrusted()
     @Published private(set) var statusText = "Starting…"
+    /// False until onboarding has finished at least once; nothing is captured before that.
+    @Published private(set) var hasStarted = false
 
     private let settings = AppSettings.shared
     private let permissions = PermissionManager()
+    private let onboarding = OnboardingWindowController()
     private let context = AppContext()
     private let inserter = Inserter()
     private let usage = UsageStore(fileURL: UsageStore.defaultFileURL())
@@ -44,10 +47,38 @@ final class AppController: ObservableObject {
             DispatchQueue.main.async { self?.refreshStatus() }
         }.store(in: &cancellables)
 
+        onboarding.onFinish = { [unowned self] in
+            self.settings.onboardingCompleted = true
+            self.beginRunning()
+        }
+
+        switch LaunchDecision.decide(onboardingCompleted: settings.onboardingCompleted,
+                                     accessibilityGranted: AXIsProcessTrusted()) {
+        case .onboarding:
+            statusText = "Finish setup to start"
+            showSetup()
+        case .run, .permissionPrompt:
+            beginRunning()
+        }
+    }
+
+    /// Opens the first-run setup window (also from the "Run setup again…" menu item).
+    func showSetup() {
+        onboarding.show(settings: settings, launch: LaunchAtLogin.shared, permissions: permissions)
+    }
+
+    /// Starts normal operation: event tap if trusted, else the Accessibility prompt.
+    private func beginRunning() {
+        if hasStarted {
+            if AXIsProcessTrusted() && !tap.isRunning { startTap() }
+            refreshStatus()
+            return
+        }
+        hasStarted = true
         if AXIsProcessTrusted() {
             startTap()
         } else {
-            showOnboarding()
+            showPermissionPrompt()
         }
         // Watch for the grant being revoked or (re)granted while running.
         trustTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
@@ -56,7 +87,7 @@ final class AppController: ObservableObject {
         refreshStatus()
     }
 
-    func showOnboarding() {
+    func showPermissionPrompt() {
         permissions.showOnboarding { [weak self] in self?.startTap() }
     }
 
@@ -68,13 +99,14 @@ final class AppController: ObservableObject {
 
     private func checkTrust() {
         let trusted = AXIsProcessTrusted()
-        guard trusted != isTrusted else { return }
+        guard hasStarted, trusted != isTrusted else { return }
         isTrusted = trusted
         if trusted { startTap() } else { tap.stop(); resetTracking() }
         refreshStatus()
     }
 
     private func refreshStatus() {
+        if !hasStarted { statusText = "Finish setup to start"; return }
         if !isTrusted { statusText = "Needs Accessibility permission" }
         else if !tap.isRunning { statusText = "Event tap not running (relaunch macmoji)" }
         else if !settings.enabled { statusText = "Paused" }

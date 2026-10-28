@@ -23,16 +23,17 @@ final class PermissionManager {
         }
     }
 
-    /// Shows the onboarding window and polls until the grant appears, then calls `onGranted`.
+    /// Accessibility-only prompt, used after onboarding is finished (e.g. the grant was revoked).
+    /// Shows the window and polls until the grant appears, then calls `onGranted`.
     func showOnboarding(onGranted: @escaping @MainActor () -> Void) {
         if window == nil {
-            let view = OnboardingView(
+            let view = PermissionPromptView(
                 requestPrompt: { [weak self] in self?.requestSystemPrompt() },
                 openSettings: { [weak self] in self?.openAccessibilitySettings() }
             )
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 300),
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            w.title = "Welcome to macmoji"
+            w.title = "macmoji needs Accessibility"
             w.contentView = NSHostingView(rootView: view)
             w.isReleasedWhenClosed = false
             w.center()
@@ -54,7 +55,7 @@ final class PermissionManager {
     }
 }
 
-struct OnboardingView: View {
+struct PermissionPromptView: View {
     let requestPrompt: () -> Void
     let openSettings: () -> Void
 
@@ -66,7 +67,7 @@ struct OnboardingView: View {
             Text("macmoji never runs in password fields and keeps nothing except which emoji you use (stored locally for ranking).")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on macmoji under Privacy & Security → Accessibility.\n3. This window closes by itself once access is granted.")
+            Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on Macmoji under Privacy & Security → Accessibility.\n3. This window closes by itself once access is granted.")
                 .font(.callout)
             HStack {
                 Button("Request Access", action: requestPrompt).keyboardShortcut(.defaultAction)

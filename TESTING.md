@@ -1,7 +1,7 @@
 # Testing macmoji
 
 ## Automated (CI and local)
-- `cd MacmojiCore && swift test` — trigger state machine table tests, search ranking tiers,
+- `cd MacmojiCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
   frecency boost and decay, usage persistence, bundled emoji JSON integrity. Runs on macOS and Linux.
 - CI (`.github/workflows/ci.yml`, macos-15 runner): `xcodegen generate`, `xcodebuild build`
   (unsigned), `swift test`, and a check that `emoji.json` matches a fresh regeneration.
@@ -11,10 +11,32 @@ CI cannot grant Accessibility to a custom app, so everything below is manual.
 ## Manual checklist (run on the bundled, signed app; not `swift run`)
 Run from Xcode (Debug logs the caret source per app in Console: filter on `macmoji`).
 
+### First-run onboarding
+Reset first: `defaults delete com.trevorgerald.macmoji` and
+`tccutil reset Accessibility com.trevorgerald.macmoji`.
+- [ ] First launch: the "Set up macmoji" window appears centered, frontmost and focused; menu shows "Finish setup to start".
+- [ ] Before finishing, typing `:thu` anywhere does nothing (no tap; no Accessibility prompt window besides setup).
+- [ ] Step 1: six 👋 tones shown; clicking one highlights it and "Selected: …" updates; Back is hidden; Next works.
+- [ ] Step 2: Back returns to step 1 with the selection kept. Toggle on → status "On" (or "Waiting for approval" + Open Login Items Settings… button that opens General → Login Items). Toggle off → "Off". Errors show in red.
+- [ ] Step 3: Next disabled until granted. Request Access / Open System Settings work. Granting it moves to step 4 within ~1 s and brings the window back to the front.
+- [ ] Step 3 when already granted: shows "Access granted" and Next is enabled.
+- [ ] Step 4: "Start using macmoji" closes the window; `:thu` now works; Settings shows the chosen skin tone.
+- [ ] Close the window at step 2 (or Quit from the menu): next launch shows setup again from step 1.
+- [ ] After finishing: relaunch goes straight to running, no setup window.
+- [ ] Menu → "Run setup again…" reopens setup while macmoji keeps working; finishing again changes nothing else.
+- [ ] Finish setup, then revoke Accessibility and relaunch: the separate "macmoji needs Accessibility" prompt appears (not setup).
+
+### Launch at login (test with the app copied to /Applications, signed as in README)
+- [ ] Settings → Launch at login toggle reflects the real state (compare System Settings → General → Login Items).
+- [ ] Turn it off in System Settings, reactivate macmoji / reopen Settings: toggle shows Off.
+- [ ] Toggle on, log out and back in: macmoji starts (smiley in menu bar), no setup window.
+- [ ] Toggle off, log out and in: it does not start.
+- [ ] Running from DerivedData/`build/`: the "move to /Applications" tip shows; note what status register() reports.
+- [ ] Record whether macOS showed a "Background Items Added" notification or required approval.
+
 ### Permissions and lifecycle
-- [ ] Fresh install, no grant: onboarding window appears; menu shows "Needs Accessibility permission".
-- [ ] "Request Access" shows the system prompt; "Open System Settings" opens Privacy & Security → Accessibility.
-- [ ] Enabling macmoji there closes the onboarding window within ~1 s and the menu shows "Active".
+- [ ] After setup, with the grant revoked: "macmoji needs Accessibility" window appears; menu shows "Needs Accessibility permission" and a "Grant Accessibility…" item.
+- [ ] Granting it there closes the window within ~1 s and the menu shows "Active".
 - [ ] Revoke the grant while running: within ~3 s the tap stops, typing in other apps is unaffected (no stuck keyboard). Re-grant: it resumes without relaunch.
 - [ ] Rebuild with an Apple Development identity: the grant survives. (With ad-hoc signing it is expected to be lost.)
 - [ ] Heavy load (e.g. a breakpoint/long hang is NOT expected): after the system disables the tap (`tapDisabledByTimeout`), it is re-enabled (log line "event tap was disabled by macOS").

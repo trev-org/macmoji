@@ -16,6 +16,9 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Launch at login") {
+                LaunchAtLoginControl(launch: LaunchAtLogin.shared)
+            }
             Section("Disabled in these apps (bundle IDs)") {
                 BundleIDListEditor(items: $settings.blocklist)
             }
@@ -26,7 +29,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 520)
+        .frame(width: 460, height: 640)
     }
 
     private func previewThumb(_ tone: SkinTone) -> String {
