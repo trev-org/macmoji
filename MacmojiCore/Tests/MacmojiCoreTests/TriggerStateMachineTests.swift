@@ -1,7 +1,8 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MacmojiCore
 
-final class TriggerStateMachineTests: XCTestCase {
+@Suite struct TriggerStateMachineTests {
     private func run(_ text: String, exact: Set<String> = []) -> (TriggerStateMachine, [TriggerStateMachine.Action]) {
         var sm = TriggerStateMachine(isExactName: { exact.contains($0) })
         var actions: [TriggerStateMachine.Action] = []
@@ -13,7 +14,7 @@ final class TriggerStateMachineTests: XCTestCase {
         run(text).1.contains { if case .show = $0 { return true }; return false }
     }
 
-    func testThuOpensPicker() {
+    @Test func testThuOpensPicker() {
         let (sm, actions) = run(":thu")
         XCTAssertEqual(sm.state, .querying("thu"))
         XCTAssertEqual(actions, [.none, .none, .show(query: "th"), .show(query: "thu")])
@@ -21,47 +22,47 @@ final class TriggerStateMachineTests: XCTestCase {
         XCTAssertEqual(sm.deleteCountForCommit, 4)
     }
 
-    func testOneCharDoesNotOpen() {
+    @Test func testOneCharDoesNotOpen() {
         let (sm, _) = run("hi :t")
         XCTAssertEqual(sm.state, .querying("t"))
         XCTAssertFalse(sm.isPickerVisible)
     }
 
-    func testTimeNeverTriggers() {
+    @Test func testTimeNeverTriggers() {
         XCTAssertFalse(everShows("time: 10:30"))
         XCTAssertFalse(everShows("at 10:30 ok"))
     }
 
-    func testURLsNeverTrigger() {
+    @Test func testURLsNeverTrigger() {
         XCTAssertFalse(everShows("https://example.com/a:bc"))
         XCTAssertFalse(everShows("see :/usr/bin"))
     }
 
-    func testColonInsideWordDoesNotArm() {
+    @Test func testColonInsideWordDoesNotArm() {
         XCTAssertFalse(everShows("a:bc"))
         XCTAssertFalse(everShows("key:value"))
     }
 
-    func testBoundaries() {
+    @Test func testBoundaries() {
         XCTAssertTrue(everShows("(:smile"))
         XCTAssertTrue(everShows("[:smile"))
         XCTAssertTrue(everShows("hello\t:smile"))
         XCTAssertTrue(everShows("line\n:smile"))
     }
 
-    func testDigitRightAfterColonCancels() {
+    @Test func testDigitRightAfterColonCancels() {
         XCTAssertFalse(everShows(" :100"))
         // Digits later in the query are fine.
         XCTAssertTrue(everShows(" :e100"))
     }
 
-    func testSpaceCancelsAndHides() {
+    @Test func testSpaceCancelsAndHides() {
         let (sm, actions) = run(":thu ")
         XCTAssertEqual(sm.state, .idle)
         XCTAssertEqual(actions.last, .hide)
     }
 
-    func testPlusOneAndDash() {
+    @Test func testPlusOneAndDash() {
         XCTAssertFalse(everShows(":+")) // only 1 char
         let (sm, _) = run(":+1")
         XCTAssertEqual(sm.currentQuery, "+1")
@@ -69,18 +70,18 @@ final class TriggerStateMachineTests: XCTestCase {
         XCTAssertEqual(run(":t-rex").0.currentQuery, "t-rex")
     }
 
-    func testAutoReplaceExactName() {
+    @Test func testAutoReplaceExactName() {
         let (sm, actions) = run(":fire:", exact: ["fire"])
         XCTAssertEqual(actions.last, .autoReplace(name: "fire", deleteCount: 6))
         XCTAssertEqual(sm.state, .idle)
     }
 
-    func testClosingColonWithoutMatchHides() {
+    @Test func testClosingColonWithoutMatchHides() {
         let (_, actions) = run(":zzqq:", exact: ["fire"])
         XCTAssertEqual(actions.last, .hide)
     }
 
-    func testBackspaceShrinksAndPastColon() {
+    @Test func testBackspaceShrinksAndPastColon() {
         var (sm, _) = run(":thu")
         XCTAssertEqual(sm.handle(.backspace), .show(query: "th"))
         XCTAssertEqual(sm.handle(.backspace), .hide)
@@ -91,7 +92,7 @@ final class TriggerStateMachineTests: XCTestCase {
         XCTAssertEqual(sm.state, .idle)
     }
 
-    func testResetHides() {
+    @Test func testResetHides() {
         var (sm, _) = run(":thu")
         XCTAssertEqual(sm.handle(.reset), .hide)
         XCTAssertEqual(sm.state, .idle)
@@ -100,7 +101,7 @@ final class TriggerStateMachineTests: XCTestCase {
         XCTAssertEqual(sm.state, .armed)
     }
 
-    func testCommitThenColonDoesNotArm() {
+    @Test func testCommitThenColonDoesNotArm() {
         var (sm, _) = run(":thu")
         sm.didCommit()
         XCTAssertEqual(sm.state, .idle)
@@ -108,14 +109,14 @@ final class TriggerStateMachineTests: XCTestCase {
         XCTAssertEqual(sm.state, .idle)
     }
 
-    func testUppercaseCancels() {
+    @Test func testUppercaseCancels() {
         XCTAssertFalse(everShows(":Smile"))
         let (sm, actions) = run(":smI")
         XCTAssertEqual(sm.state, .idle)
         XCTAssertEqual(actions.last, .hide)
     }
 
-    func testDoubleColonDoesNotArm() {
+    @Test func testDoubleColonDoesNotArm() {
         XCTAssertFalse(everShows("::smile"))
     }
 }
