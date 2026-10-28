@@ -60,6 +60,20 @@ Unit tests: `cd MacmojiCore && swift test`.
 Always test the bundled `Macmoji.app`. Running core code through `swift run` or a terminal
 would attribute permissions to Terminal instead.
 
+### Without Xcode (Command Line Tools only)
+
+```sh
+scripts/build-app.sh          # swift build -c release --arch arm64 → build/Macmoji.app (ad-hoc signed)
+open build/Macmoji.app
+scripts/make-dmg.sh build/Macmoji.app   # or: scripts/make-dmg.sh --swiftpm
+(cd MacmojiCore && swift test)
+```
+
+The root `Package.swift` builds the app as a SwiftPM executable (Swift 5 language mode, same as the
+Xcode project). `ARCHS="arm64 x86_64"` gives a universal build. Ad-hoc signing changes the code
+signature on every rebuild, so macOS may ask for Accessibility again; re-grant it (or remove and
+re-add macmoji) in System Settings → Privacy & Security → Accessibility.
+
 ## First-run setup
 On first launch macmoji opens a setup window **before it captures anything** (the event tap
 does not start until setup is finished). Steps, with Back/Next:

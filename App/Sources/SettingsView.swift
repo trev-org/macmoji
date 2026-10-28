@@ -39,7 +39,14 @@ struct SettingsView: View {
 
 struct BundleIDListEditor: View {
     @Binding var items: [String]
-    @State private var newItem = ""
+    // Spelled out instead of `@State`: in the macOS 27 SDK `@State` is a macro whose plugin
+    // (SwiftUIMacros) ships only with Xcode, so the Command Line Tools build can't expand it.
+    // A stored `State` is still picked up by SwiftUI as a dynamic property.
+    private let newItemState = State(initialValue: "")
+    private var newItem: String {
+        get { newItemState.wrappedValue }
+        nonmutating set { newItemState.wrappedValue = newValue }
+    }
 
     var body: some View {
         ForEach(items, id: \.self) { item in
@@ -51,7 +58,7 @@ struct BundleIDListEditor: View {
             }
         }
         HStack {
-            TextField("com.example.App", text: $newItem)
+            TextField("com.example.App", text: newItemState.projectedValue)
                 .onSubmit(add)
             Button("Add", action: add).disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
         }
