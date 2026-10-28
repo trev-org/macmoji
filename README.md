@@ -48,13 +48,28 @@ Unit tests: `cd MacmojiCore && swift test`.
 Always test the bundled `Macmoji.app`. Running core code through `swift run` or a terminal
 would attribute permissions to Terminal instead.
 
+## First-run setup
+On first launch macmoji opens a setup window **before it captures anything** (the event tap
+does not start until setup is finished). Steps, with Back/Next:
+1. **Default skin tone**: pick one of six 👋 variants (saved to the skin-tone setting).
+2. **Launch at login**: yes/no toggle using `SMAppService.mainApp`. If macOS answers
+   "requires approval", a button opens System Settings → General → Login Items.
+3. **Accessibility** (see below). The step moves on by itself once access is granted.
+4. **You're all set**: try `:thu`. Clicking *Start using macmoji* saves the
+   `onboardingCompleted` flag and starts the app.
+
+If you close or quit setup partway, it shows again next launch. After it's finished, later
+launches go straight to running. Menu bar → **Run setup again…** reopens it. To force a fresh
+first run: `defaults delete com.trevorgerald.macmoji onboardingCompleted`.
+
 ## Granting Accessibility
-On first launch macmoji shows a welcome window.
+In the setup's Accessibility step (or, if the grant is later revoked, the
+"macmoji needs Accessibility" window):
 1. Click **Request Access**, then **Open System Settings**
    (System Settings → Privacy & Security → Accessibility).
 2. Turn on **Macmoji** (use **+** to add it from `build/Build/Products/Debug/` or Xcode's
    DerivedData if it is not listed).
-3. The window closes by itself within a second and the menu shows "Active".
+3. Setup advances by itself within a second; the menu shows "Active" once it's running.
 
 If it stays inactive: remove the Macmoji entry with **–**, add it again, and relaunch.
 Reset it completely with `tccutil reset Accessibility com.trevorgerald.macmoji`.
@@ -81,8 +96,16 @@ each rebuild. Use an **Apple Development** certificate (a free Apple ID works):
 If you switch identities, re-grant once (or `tccutil reset` as above). Developer ID signing and
 notarization only matter if you distribute it to others.
 
+## Launch at login
+Uses `SMAppService.mainApp` (no helper app). The toggle (setup and Settings) always shows the
+live system status, since you can also change it in System Settings → General → Login Items.
+For it to work reliably, **copy the built app to `/Applications`** (or `~/Applications`) and
+enable it from there; registering a copy that lives in Xcode's DerivedData or `build/` makes
+the login item point at that transient path. A stable signature (see Signing) also helps. If
+the toggle shows "Waiting for approval", use *Open Login Items Settings…* and allow Macmoji.
+
 ## Settings
-Menu bar → Settings…: enable/disable, default skin tone, the per-app blocklist (bundle IDs;
+Menu bar → Settings…: enable/disable, default skin tone, launch at login, the per-app blocklist (bundle IDs;
 Slack and Discord by default) and "paste mode" apps (Terminal and iTerm2 by default), where the
 emoji is inserted by a clipboard paste that saves and restores your clipboard. Usage counts for
 ranking are stored in `~/Library/Application Support/macmoji/usage.json`.
