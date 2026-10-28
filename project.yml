@@ -1,0 +1,37 @@
+# XcodeGen spec. Generate the project on a Mac with: brew install xcodegen && xcodegen generate
+name: Macmoji
+options:
+  bundleIdPrefix: com.trevorgerald
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  MacmojiCore:
+    path: MacmojiCore
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  Macmoji:
+    type: application
+    platform: macOS
+    sources:
+      - App/Sources
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    dependencies:
+      - package: MacmojiCore
+        product: MacmojiCore
+    settings:
+      base:
+        PRODUCT_NAME: Macmoji
+        PRODUCT_BUNDLE_IDENTIFIER: com.trevorgerald.macmoji
+        INFOPLIST_FILE: App/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/Resources/Macmoji.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: NO
+        COMBINE_HIDPI_IMAGES: YES

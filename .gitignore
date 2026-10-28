@@ -4,3 +4,4 @@ node_modules/
 DerivedData/
 .swiftpm/
 build/
+Config/Signing.local.xcconfig
