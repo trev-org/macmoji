@@ -1,0 +1,2 @@
+{ "name": "macmoji-emoji-gen", "private": true, "type": "module",
+  "dependencies": { "emojibase-data": "18.0.0" } }
