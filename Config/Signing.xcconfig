@@ -1,0 +1,14 @@
+// Default: ad-hoc signing ("-"). Ad-hoc identities change on every build, so macOS
+// forgets the Accessibility grant after each rebuild. For a stable identity, create
+// Config/Signing.local.xcconfig (gitignored) containing, e.g.:
+//
+//   CODE_SIGN_STYLE = Automatic
+//   CODE_SIGN_IDENTITY = Apple Development
+//   DEVELOPMENT_TEAM = ABCDE12345
+//
+// See README.md, "Signing".
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+#include? "Signing.local.xcconfig"
