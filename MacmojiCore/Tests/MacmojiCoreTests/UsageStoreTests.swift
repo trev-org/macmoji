@@ -32,6 +32,19 @@ import Testing
         XCTAssertEqual(store.score("never-used"), 0)
     }
 
+    @Test func lastUsedNeverRegressesWhenClockMovesBackwards() {
+        let clock = UsageTestClock()
+        let store = UsageStore(now: { clock.now })
+        store.record("🔥")
+        let firstTimestamp = clock.now
+
+        clock.advance(by: -60)
+        store.record("🔥")
+
+        XCTAssertEqual(store.record(for: "🔥")?.lastUsed, firstTimestamp)
+        XCTAssertEqual(store.record(for: "🔥")?.count, 2)
+    }
+
     @Test func persistenceRoundTripUsesInjectedStorage() {
         let storage = MemoryUsageHistoryStorage()
         let clock = UsageTestClock()
@@ -41,6 +54,7 @@ import Testing
         clock.advance(by: 120)
         first.record("👍")
         first.record("🔥")
+        first.flush()
 
         let reloaded = UsageStore(storage: storage, now: { clock.now })
         XCTAssertEqual(
@@ -51,13 +65,13 @@ import Testing
         XCTAssertTrue(storage.data != nil)
     }
 
-    @Test func clearRemovesMemoryAndPersistedHistory() {
+    @Test func clearRemovesMemoryAndPersistedHistory() throws {
         let storage = MemoryUsageHistoryStorage()
         let store = UsageStore(storage: storage)
         store.record("🔥")
         store.record("👍")
 
-        store.clear()
+        try store.clear()
 
         XCTAssertEqual(store.count, 0)
         XCTAssertEqual(store.record(for: "🔥"), nil)
@@ -83,7 +97,27 @@ import Testing
         XCTAssertEqual(store.record(for: "oldest"), nil)
         XCTAssertEqual(store.record(for: "middle")?.count, 1)
         XCTAssertEqual(store.record(for: "newest")?.count, 1)
+        store.flush()
         XCTAssertEqual(UsageStore(storage: storage, maximumEntryCount: 2).count, 2)
+    }
+
+    @Test func clearFailureKeepsCurrentAndPersistedHistory() {
+        let storage = MemoryUsageHistoryStorage()
+        let store = UsageStore(storage: storage)
+        store.record("🔥")
+        store.flush()
+        storage.shouldFailSave = true
+
+        var didThrow = false
+        do {
+            try store.clear()
+        } catch {
+            didThrow = true
+        }
+
+        XCTAssertTrue(didThrow)
+        XCTAssertEqual(store.record(for: "🔥")?.count, 1)
+        XCTAssertEqual(UsageStore(storage: storage).record(for: "🔥")?.count, 1)
     }
 }
 
@@ -98,6 +132,18 @@ private final class UsageTestClock: @unchecked Sendable {
 private final class MemoryUsageHistoryStorage: UsageHistoryStorage, @unchecked Sendable {
     private let lock = NSLock()
     private var storedData: Data?
+    private var failsSaves = false
+
+    var shouldFailSave: Bool {
+        get {
+            lock.lock(); defer { lock.unlock() }
+            return failsSaves
+        }
+        set {
+            lock.lock(); defer { lock.unlock() }
+            failsSaves = newValue
+        }
+    }
 
     var data: Data? {
         lock.lock(); defer { lock.unlock() }
@@ -111,6 +157,11 @@ private final class MemoryUsageHistoryStorage: UsageHistoryStorage, @unchecked S
 
     func save(_ data: Data) throws {
         lock.lock(); defer { lock.unlock() }
+        if failsSaves { throw StorageError.saveFailed }
         storedData = data
+    }
+
+    private enum StorageError: Error {
+        case saveFailed
     }
 }

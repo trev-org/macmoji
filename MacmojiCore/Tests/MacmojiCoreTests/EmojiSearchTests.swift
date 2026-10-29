@@ -88,7 +88,9 @@ import Testing
     @Test func testUsagePersists() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString).appendingPathComponent("usage.json")
-        UsageStore(fileURL: url).record("🔥")
+        let original = UsageStore(fileURL: url)
+        original.record("🔥")
+        original.flush()
         XCTAssertEqual(UsageStore(fileURL: url).record(for: "🔥")?.count, 1)
         try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }

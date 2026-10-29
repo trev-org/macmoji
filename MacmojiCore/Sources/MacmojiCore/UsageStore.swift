@@ -1,4 +1,5 @@
 import Foundation
+import Dispatch
 
 /// Persistence boundary for emoji usage history.
 ///
@@ -10,7 +11,7 @@ public protocol UsageHistoryStorage: Sendable {
 }
 
 /// JSON-file backing storage used by the app.
-public struct JSONFileUsageHistoryStorage: UsageHistoryStorage {
+public struct JSONFileUsageHistoryStorage: UsageHistoryStorage, @unchecked Sendable {
     public let fileURL: URL
 
     public init(fileURL: URL) {
@@ -52,6 +53,7 @@ public final class UsageStore: @unchecked Sendable {
     public static let defaultMaximumEntryCount = 500
 
     private let lock = NSLock()
+    private let persistenceQueue = DispatchQueue(label: "com.trevorgerald.macmoji.usage-persistence")
     private var records: [String: Record]
     private let storage: (any UsageHistoryStorage)?
     private let now: @Sendable () -> Date
@@ -78,7 +80,7 @@ public final class UsageStore: @unchecked Sendable {
         let loaded = Self.loadRecords(from: storage)
         records = Self.pruned(loaded, to: maximumEntryCount)
         if records.count != loaded.count {
-            persistLocked()
+            try? Self.save(records, to: storage)
         }
     }
 
@@ -107,14 +109,21 @@ public final class UsageStore: @unchecked Sendable {
 
     public func record(_ emoji: String) {
         guard !emoji.isEmpty else { return }
-        let timestamp = now()
         lock.lock()
+        let timestamp = now()
         var value = records[emoji] ?? Record(count: 0, lastUsed: timestamp)
         if value.count < Int.max { value.count += 1 }
-        value.lastUsed = timestamp
+        value.lastUsed = max(value.lastUsed, timestamp)
         records[emoji] = value
         records = Self.pruned(records, to: maximumEntryCount, retaining: emoji)
-        persistLocked()
+        let snapshot = records
+        if let storage {
+            // Enqueue while holding the state lock so concurrent records persist in mutation order.
+            // Encoding and atomic file I/O happen off the caller (and event-tap) thread.
+            persistenceQueue.async {
+                try? Self.save(snapshot, to: storage)
+            }
+        }
         lock.unlock()
     }
 
@@ -151,10 +160,27 @@ public final class UsageStore: @unchecked Sendable {
     }
 
     /// Removes all in-memory and persisted usage history.
-    public func clear() {
+    ///
+    /// The in-memory state is changed only after pending writes and the clearing write succeed, so
+    /// a storage failure cannot make old history unexpectedly reappear after relaunch.
+    public func clear() throws {
         lock.lock()
-        records.removeAll()
-        persistLocked()
+        do {
+            try persistenceQueue.sync {
+                try Self.save([:], to: storage)
+            }
+            records.removeAll()
+            lock.unlock()
+        } catch {
+            lock.unlock()
+            throw error
+        }
+    }
+
+    /// Waits for writes already queued by ``record(_:)``. Primarily useful at app shutdown and in tests.
+    public func flush() {
+        lock.lock()
+        persistenceQueue.sync {}
         lock.unlock()
     }
 
@@ -165,11 +191,13 @@ public final class UsageStore: @unchecked Sendable {
         return frequency * pow(0.5, age / halfLife)
     }
 
-    /// Called during initialization or while `lock` is held so writes cannot persist out of order.
-    private func persistLocked() {
-        guard let storage,
-              let data = try? JSONEncoder().encode(Payload(records: records)) else { return }
-        try? storage.save(data) // A persistence failure must never prevent insertion.
+    private static func save(
+        _ snapshot: [String: Record],
+        to storage: (any UsageHistoryStorage)?
+    ) throws {
+        guard let storage else { return }
+        let data = try JSONEncoder().encode(Payload(records: snapshot))
+        try storage.save(data)
     }
 
     private static func loadRecords(from storage: (any UsageHistoryStorage)?) -> [String: Record] {

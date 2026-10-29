@@ -41,6 +41,8 @@ scripts/gen-emoji.mjs        regenerates MacmojiCore/.../Resources/emoji.json fr
 
 ## Build and run on a Mac
 Requirements: macOS 14+, Xcode 15.3+ (Swift 5.10+), Homebrew.
+The core test suite uses Swift Testing and therefore requires a Swift 6 toolchain (Xcode 16+);
+the app and package still compile in Swift 5 language mode.
 
 ```sh
 brew install xcodegen
