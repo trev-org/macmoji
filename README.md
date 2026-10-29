@@ -134,7 +134,8 @@ the toggle shows "Waiting for approval", use *Open Login Items Settings…* and 
 Menu bar → Settings…: enable/disable, default skin tone, launch at login, the per-app blocklist (bundle IDs;
 Slack and Discord by default) and "paste mode" apps (Terminal and iTerm2 by default), where the
 emoji is inserted by a clipboard paste that saves and restores your clipboard. Usage counts for
-ranking are stored in `~/Library/Application Support/macmoji/usage.json`.
+ranking are stored in `~/Library/Application Support/macmoji/usage.json` (up to 500 distinct
+emoji). Use menu bar → **Clear Emoji History** to reset them.
 
 ## Packaging (DMG)
 ```sh
@@ -179,8 +180,12 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
   it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
 - Trigger rules: `:` counts only at the start of text or after whitespace, `(` or `[`; the picker
   opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.
-- Ranking: exact name → prefix → substring → fuzzy subsequence → keyword; frecency boost within
-  each tier.
+- Ranking is lexicographic: exact name → prefix → substring → fuzzy subsequence → keyword first,
+  then frecency within that tier, then shorter matched name and database order. Frecency is
+  `log2(useCount + 1) × 0.5^(daysSinceLastUse / 7)`. The logarithm prevents runaway frequency,
+  while one inactive week halves the score. Because the match tier is compared first, usage can
+  never push a weaker match above a stronger one. Query-free core searches return used emoji in
+  frecency order; the inline picker still waits for two characters to avoid opening on every `:`.
 - The picker is a non-activating `NSPanel` hosting SwiftUI, placed via
   `kAXBoundsForRangeParameterizedAttribute`, falling back to the focused element's frame and
   then the mouse. Electron apps get `AXManualAccessibility = true`.

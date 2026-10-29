@@ -91,6 +91,10 @@ final class AppController: ObservableObject {
         permissions.showOnboarding { [weak self] in self?.startTap() }
     }
 
+    func clearEmojiHistory() {
+        usage.clear()
+    }
+
     private func startTap() {
         isTrusted = AXIsProcessTrusted()
         if !tap.start() { NSLog("macmoji: CGEvent.tapCreate failed") }

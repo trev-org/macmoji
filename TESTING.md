@@ -2,7 +2,8 @@
 
 ## Automated (CI and local)
 - `cd MacmojiCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
-  frecency boost and decay, usage persistence, bundled emoji JSON integrity. Runs on macOS and Linux.
+  frecency boost and decay, capped usage persistence/clearing, bundled emoji JSON integrity. Runs
+  on macOS and Linux.
 - CI (`.github/workflows/ci.yml`, macos-15 runner): `xcodegen generate`, `xcodebuild build`
   (unsigned), `swift test`, and a check that `emoji.json` matches a fresh regeneration.
 
@@ -67,6 +68,8 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Esc closes the picker, leaves `:query` text, and is not passed to the app (e.g. does not exit full screen / close a sheet).
 - [ ] Clicking a row inserts it.
 - [ ] Ranking: `:fire` → 🔥 first; `:+1` → 👍; after choosing 👎 several times for `:thu`, it rises above 👍 but not above an exact match.
+- [ ] Quit and relaunch: the usage-based order is retained. Menu → **Clear Emoji History** resets
+  it; quit and relaunch again to confirm the clear persisted.
 - [ ] Multi-monitor: picker appears on the screen with the caret, including a screen above/left of the primary.
 
 ### Insertion

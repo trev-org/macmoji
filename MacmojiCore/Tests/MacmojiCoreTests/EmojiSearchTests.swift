@@ -56,10 +56,23 @@ import Testing
         let clock = Clock()
         let usage = UsageStore(fileURL: nil, now: { clock.now })
         usage.record("B"); usage.record("B")
-        usage.record("E"); usage.record("E"); usage.record("E")
+        for _ in 0..<100 { usage.record("E") }
         let r = EmojiSearch(store: small, usage: usage).search("thu", limit: 10)
-        // B jumps ahead of A within prefix tier; E stays in fuzzy tier below substring.
+        // B jumps ahead of A within the prefix tier. Even extreme use cannot move fuzzy E
+        // above exact/prefix/substring matches.
         XCTAssertEqual(r.map(\.emoji.emoji), ["C", "B", "A", "D", "E", "F"])
+    }
+
+    @Test func testEmptyQueryReturnsHistoryOnly() {
+        let clock = Clock()
+        let usage = UsageStore(fileURL: nil, now: { clock.now })
+        usage.record("A")
+        usage.record("B"); usage.record("B")
+
+        let r = EmojiSearch(store: small, usage: usage).search("", limit: 10)
+
+        XCTAssertEqual(r.map(\.emoji.emoji), ["B", "A"])
+        XCTAssertEqual(r.map(\.tier), [.history, .history])
     }
 
     @Test func testFrecencyDecay() {
