@@ -70,12 +70,24 @@ import Testing
             .files(["/tmp/quarterly-report.pdf"]),
             source: ClipboardSource(bundleIdentifier: "com.apple.finder", name: "Finder")
         )
+        clock.advance(by: 1)
+        store.record(
+            .image(
+                data: Data([1, 2, 3]),
+                thumbnailData: nil,
+                format: .png,
+                pixelWidth: 10,
+                pixelHeight: 10
+            ),
+            source: ClipboardSource(bundleIdentifier: "com.apple.Preview", name: "Preview")
+        )
 
         XCTAssertEqual(store.search("hello").map(\.kind), [.text])
         XCTAssertEqual(store.search("qtrly").map(\.kind), [.files])
         XCTAssertEqual(store.search("safari").map(\.kind), [.link])
         XCTAssertEqual(store.search("", filter: .links).map(\.kind), [.link])
         XCTAssertEqual(store.search("", filter: .files).map(\.kind), [.files])
+        XCTAssertEqual(store.search("", filter: .images).map(\.kind), [.image])
     }
 
     @Test func retentionAndCapNeverPrunePinnedItems() {
