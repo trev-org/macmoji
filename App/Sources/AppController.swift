@@ -2,6 +2,7 @@
 import AppKit
 import Carbon.HIToolbox
 import Combine
+import Dispatch
 import MacmojiCore
 
 /// Wires the event tap, state machine, search, picker and inserter together.
@@ -89,6 +90,29 @@ final class AppController: ObservableObject {
 
     func showPermissionPrompt() {
         permissions.showOnboarding { [weak self] in self?.startTap() }
+    }
+
+    func clearEmojiHistory() {
+        DispatchQueue.global(qos: .utility).async { [usage] in
+            do {
+                try usage.clear()
+            } catch {
+                let message = error.localizedDescription
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        let alert = NSAlert()
+                        alert.alertStyle = .warning
+                        alert.messageText = "Couldn’t Clear Emoji History"
+                        alert.informativeText = message
+                        alert.runModal()
+                    }
+                }
+            }
+        }
+    }
+
+    func flushEmojiHistory() {
+        usage.flush()
     }
 
     private func startTap() {

@@ -16,6 +16,7 @@ struct MenuContent: View {
         Button("Run setup again…") { controller.showSetup() }
         SettingsLink { Text("Settings…") }
             .keyboardShortcut(",")
+        Button("Clear Emoji History") { controller.clearEmojiHistory() }
         Divider()
         Button("Quit macmoji") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
