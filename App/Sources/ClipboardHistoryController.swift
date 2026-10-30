@@ -177,7 +177,8 @@ final class ClipboardHistoryController: ObservableObject {
         case kVK_ANSI_P where command:
             model.togglePin()
             return true
-        case kVK_Delete, kVK_ForwardDelete where command:
+        case kVK_Delete, kVK_ForwardDelete:
+            guard command else { return false }
             model.deleteSelected()
             return true
         default:
@@ -195,7 +196,7 @@ final class ClipboardHistoryController: ObservableObject {
         pendingPasteID = operationID
         let expectedChangeCount = NSPasteboard.general.changeCount
         panel.hide()
-        guard application.activate(options: [.activateIgnoringOtherApps]) else {
+        guard application.activate() else {
             pendingPasteID = nil
             NSSound.beep()
             return
@@ -221,7 +222,7 @@ final class ClipboardHistoryController: ObservableObject {
         let application = previousApplication
         panel.hide()
         if let application, !application.isTerminated {
-            application.activate(options: [.activateIgnoringOtherApps])
+            application.activate()
         }
     }
 
