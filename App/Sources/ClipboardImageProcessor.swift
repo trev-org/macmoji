@@ -1,7 +1,7 @@
 #if os(macOS)
 import Foundation
 import ImageIO
-import MacmojiCore
+import RevCore
 
 /// Performs image decoding and thumbnail encoding away from the main run loop.
 enum ClipboardImageProcessor {

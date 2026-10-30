@@ -107,7 +107,7 @@ def background(scale):
     t = "Drag to Applications"
     tw = d.textlength(t, font=title)
     d.text(((W - tw) / 2, 300 * scale), t, font=title, fill=(40, 34, 90, 255))
-    s = "Then open Macmoji from your Applications folder"
+    s = "Then open Rev from your Applications folder"
     sw = d.textlength(s, font=sub)
     d.text(((W - sw) / 2, 340 * scale), s, font=sub, fill=(110, 105, 150, 255))
     return img.convert("RGB")

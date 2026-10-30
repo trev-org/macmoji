@@ -53,7 +53,7 @@ public final class UsageStore: @unchecked Sendable {
     public static let defaultMaximumEntryCount = 500
 
     private let lock = NSLock()
-    private let persistenceQueue = DispatchQueue(label: "com.trevorgerald.macmoji.usage-persistence")
+    private let persistenceQueue = DispatchQueue(label: "com.trevorgerald.rev.usage-persistence")
     private var records: [String: Record]
     private let storage: (any UsageHistoryStorage)?
     private let now: @Sendable () -> Date
@@ -100,11 +100,11 @@ public final class UsageStore: @unchecked Sendable {
         )
     }
 
-    /// Default location: `~/Library/Application Support/macmoji/usage.json` on macOS.
+    /// Default location: `~/Library/Application Support/Rev/usage.json` on macOS.
     public static func defaultFileURL() -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        return base.appendingPathComponent("macmoji", isDirectory: true).appendingPathComponent("usage.json")
+        return base.appendingPathComponent("Rev", isDirectory: true).appendingPathComponent("usage.json")
     }
 
     public func record(_ emoji: String) {

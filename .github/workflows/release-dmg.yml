@@ -1,4 +1,4 @@
-name: Release DMG
+name: Release Rev DMG
 on:
   push:
     tags: ["v*"]
@@ -37,14 +37,14 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
           echo "DEVELOPER_ID_APPLICATION=$DEVELOPER_ID_APPLICATION" >> "$GITHUB_ENV"
           if [ -n "$NOTARY_APPLE_ID" ]; then
-            xcrun notarytool store-credentials macmoji-notary --apple-id "$NOTARY_APPLE_ID" \
+            xcrun notarytool store-credentials rev-notary --apple-id "$NOTARY_APPLE_ID" \
               --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --keychain "$KEYCHAIN"
-            echo "NOTARY_PROFILE=macmoji-notary" >> "$GITHUB_ENV"
+            echo "NOTARY_PROFILE=rev-notary" >> "$GITHUB_ENV"
           fi
       - name: Build DMG
         run: scripts/make-dmg.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: Macmoji-dmg
+          name: Rev-dmg
           path: dist/*.dmg
           if-no-files-found: error

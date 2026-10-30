@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Builds dist/Macmoji-<version>.dmg with the classic "drag to Applications" window.
+# Builds dist/Rev-<version>.dmg with the classic "drag to Applications" window.
 # Runs on macOS only.
 #
 # Usage:
 #   scripts/make-dmg.sh                 # build Release via xcodegen + xcodebuild, then package
-#   scripts/make-dmg.sh path/to/Macmoji.app   # package an already-built app
+#   scripts/make-dmg.sh path/to/Rev.app   # package an already-built app
 #   scripts/make-dmg.sh --swiftpm       # no Xcode: build with scripts/build-app.sh (SwiftPM), then package
 #
 # Optional environment:
@@ -37,17 +37,17 @@ log() { printf '==> %s\n' "$*"; }
 if [[ "${1:-}" == "--swiftpm" ]] || { [[ $# -eq 0 ]] && ! xcodebuild -version >/dev/null 2>&1; }; then
   log "Building with SwiftPM (scripts/build-app.sh)"
   "$ROOT/scripts/build-app.sh"
-  APP="$BUILD/Macmoji.app"
+  APP="$BUILD/Rev.app"
 elif [[ $# -ge 1 ]]; then
   APP="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 else
   command -v xcodegen >/dev/null || { echo "error: brew install xcodegen" >&2; exit 1; }
   log "Generating project and building Release"
   xcodegen generate
-  xcodebuild -project Macmoji.xcodeproj -scheme Macmoji -configuration Release \
+  xcodebuild -project Rev.xcodeproj -scheme Rev -configuration Release \
     -destination 'platform=macOS' -derivedDataPath "$BUILD" \
     CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build
-  APP="$BUILD/Build/Products/Release/Macmoji.app"
+  APP="$BUILD/Build/Products/Release/Rev.app"
 fi
 [[ -d "$APP" ]] || { echo "error: $APP not found" >&2; exit 1; }
 
@@ -57,27 +57,27 @@ if [[ -z "$VERSION" || "$VERSION" == *'$('* ]]; then
   VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' project.yml | head -n1)"
 fi
 [[ -n "$VERSION" ]] || { echo "error: could not determine version" >&2; exit 1; }
-DMG="$DIST/Macmoji-$VERSION.dmg"
-log "Packaging Macmoji $VERSION from $APP"
+DMG="$DIST/Rev-$VERSION.dmg"
+log "Packaging Rev $VERSION from $APP"
 
 # 2. Sign the app.
 SIGNED=0
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
   log "Signing app with hardened runtime: $DEVELOPER_ID_APPLICATION"
   codesign --force --deep --options runtime --timestamp \
-    --entitlements "$ROOT/App/Resources/Macmoji.entitlements" \
+    --entitlements "$ROOT/App/Resources/Rev.entitlements" \
     --sign "$DEVELOPER_ID_APPLICATION" "$APP"
   codesign --verify --strict --verbose=2 "$APP"
   SIGNED=1
 else
   log "DEVELOPER_ID_APPLICATION not set: ad-hoc signing"
-  codesign --force --deep --sign - --entitlements "$ROOT/App/Resources/Macmoji.entitlements" "$APP"
+  codesign --force --deep --sign - --entitlements "$ROOT/App/Resources/Rev.entitlements" "$APP"
 fi
 
 # 3. Stage.
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-cp -R "$APP" "$STAGE/Macmoji.app"
+cp -R "$APP" "$STAGE/Rev.app"
 mkdir -p "$DIST"
 rm -f "$DMG"
 
@@ -90,7 +90,7 @@ fi
 
 ICNS=""
 if command -v iconutil >/dev/null; then
-  ICONSET="$STAGE/Macmoji.iconset"
+  ICONSET="$STAGE/Rev.iconset"
   mkdir -p "$ICONSET"
   cp "$ROOT"/App/Resources/Assets.xcassets/AppIcon.appiconset/icon_*.png "$ICONSET"/
   iconutil -c icns "$ICONSET" -o "$STAGE/VolumeIcon.icns" && ICNS="$STAGE/VolumeIcon.icns"
@@ -98,20 +98,20 @@ if command -v iconutil >/dev/null; then
 fi
 SRC="$STAGE/src"
 mkdir -p "$SRC"
-mv "$STAGE/Macmoji.app" "$SRC/"
+mv "$STAGE/Rev.app" "$SRC/"
 
 # 4. Build the DMG.
 if command -v create-dmg >/dev/null; then
   log "Building DMG with create-dmg"
   args=(
-    --volname "Macmoji"
+    --volname "Rev"
     --background "$BG"
     --window-pos 200 120
     --window-size "$WIN_W" "$WIN_H"
     --icon-size "$ICON_SIZE"
     --text-size 13
-    --icon "Macmoji.app" "$APP_X" "$ICON_Y"
-    --hide-extension "Macmoji.app"
+    --icon "Rev.app" "$APP_X" "$ICON_Y"
+    --hide-extension "Rev.app"
     --app-drop-link "$APPS_X" "$ICON_Y"
     --hdiutil-quiet
     --overwrite
@@ -125,7 +125,7 @@ else
   ln -s /Applications "$SRC/Applications"
   mkdir -p "$SRC/.background"
   cp "$BG" "$SRC/.background/background.${BG##*.}"
-  hdiutil create -quiet -srcfolder "$SRC" -volname Macmoji -fs HFS+ -format UDRW -ov "$RW"
+  hdiutil create -quiet -srcfolder "$SRC" -volname Rev -fs HFS+ -format UDRW -ov "$RW"
   MOUNT_DIR="$(hdiutil attach -readwrite -noverify -noautoopen "$RW" | awk -F'\t' '/\/Volumes\//{print $NF}' | tail -n1)"
   [[ -n "$MOUNT_DIR" ]] || { echo "error: could not mount $RW" >&2; exit 1; }
   if [[ -n "$ICNS" ]]; then
@@ -147,9 +147,9 @@ tell application "Finder"
     set icon size of opts to $ICON_SIZE
     set text size of opts to 13
     set background picture of opts to file ".background:background.${BG##*.}"
-    set position of item "Macmoji.app" of container window to {$APP_X, $ICON_Y}
+    set position of item "Rev.app" of container window to {$APP_X, $ICON_Y}
     set position of item "Applications" of container window to {$APPS_X, $ICON_Y}
-    set extension hidden of item "Macmoji.app" to true
+    set extension hidden of item "Rev.app" to true
     close
     open
     update without registering applications
@@ -186,9 +186,9 @@ if [[ "$SIGNED" != 1 || -z "${NOTARY_PROFILE:-}" ]]; then
   cat <<'NOTE'
 
 NOTE: this DMG is not notarized. It works on this Mac, but on other Macs Gatekeeper will
-refuse to open Macmoji ("cannot be opened because Apple cannot check it for malicious
+refuse to open Rev ("cannot be opened because Apple cannot check it for malicious
 software" / "damaged"). Recipients can right-click → Open, or allow it in System Settings →
-Privacy & Security, or run: xattr -dr com.apple.quarantine /Applications/Macmoji.app
+Privacy & Security, or run: xattr -dr com.apple.quarantine /Applications/Rev.app
 For a clean install on any Mac, set DEVELOPER_ID_APPLICATION and NOTARY_PROFILE (see README).
 NOTE
 fi

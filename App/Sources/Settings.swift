@@ -1,7 +1,7 @@
 #if os(macOS)
 import Foundation
 import Combine
-import MacmojiCore
+import RevCore
 
 /// User preferences, persisted in UserDefaults.
 @MainActor

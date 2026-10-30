@@ -33,7 +33,7 @@ final class PermissionManager {
             )
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 300),
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            w.title = "macmoji needs Accessibility"
+            w.title = "rev needs Accessibility"
             w.contentView = NSHostingView(rootView: view)
             w.isReleasedWhenClosed = false
             w.center()
@@ -61,13 +61,13 @@ struct PermissionPromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("🙂 macmoji needs Accessibility access").font(.title2).bold()
-            Text("macmoji watches for ':' followed by a shortcode (like :thu) and replaces it with an emoji. To read keystrokes, swallow the picker's arrow/Enter/Tab/Esc keys, find the text cursor and type the emoji, macOS requires the Accessibility permission.")
+            Text("🙂 rev needs Accessibility access").font(.title2).bold()
+            Text("rev watches for ':' followed by a shortcode (like :thu) and replaces it with an emoji. To read keystrokes, swallow the picker's arrow/Enter/Tab/Esc keys, find the text cursor and type the emoji, macOS requires the Accessibility permission.")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("macmoji never reads typing in password fields. Emoji usage and enabled clipboard history stay local; sensitive and excluded-app clipboard items are skipped.")
+            Text("rev never reads typing in password fields. Emoji usage and enabled clipboard history stay local; sensitive and excluded-app clipboard items are skipped.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on Macmoji under Privacy & Security → Accessibility.\n3. This window closes by itself once access is granted.")
+            Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on Rev under Privacy & Security → Accessibility.\n3. This window closes by itself once access is granted.")
                 .font(.callout)
             HStack {
                 Button("Request Access", action: requestPrompt).keyboardShortcut(.defaultAction)

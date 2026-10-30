@@ -19,7 +19,7 @@ public struct JSONFileSnippetStorage: SnippetStorage, @unchecked Sendable {
             in: .userDomainMask
         ).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
         return applicationSupport
-            .appendingPathComponent("Macmoji", isDirectory: true)
+            .appendingPathComponent("Rev", isDirectory: true)
             .appendingPathComponent("snippets.json")
     }
 
@@ -104,7 +104,7 @@ public final class SnippetStore: @unchecked Sendable {
     private let lock = NSLock()
     private let persistenceStateLock = NSLock()
     private let persistenceQueue = DispatchQueue(
-        label: "com.trevorgerald.macmoji.snippet-persistence",
+        label: "com.trevorgerald.rev.snippet-persistence",
         qos: .utility
     )
     private let storage: (any SnippetStorage)?

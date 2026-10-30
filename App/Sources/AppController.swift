@@ -3,7 +3,7 @@ import AppKit
 import Carbon.HIToolbox
 import Combine
 import Dispatch
-import MacmojiCore
+import RevCore
 
 /// Wires the event tap, state machine, search, picker and inserter together.
 /// Everything runs on the main thread (the tap's run loop source is on the main run loop).
@@ -67,7 +67,7 @@ final class AppController: ObservableObject {
             })
         } catch {
             statusText = "Could not load emoji data"
-            NSLog("macmoji: failed to load emoji.json: \(error)")
+            NSLog("rev: failed to load emoji.json: \(error)")
             return
         }
         model.onChoose = { [unowned self] index in self.commit(index: index) }
@@ -75,7 +75,7 @@ final class AppController: ObservableObject {
             ClipboardHistoryController.shared.ignorePasteboardChange(changeCount)
         }
         context.onAppChanged = { [unowned self] in self.resetTracking(); self.refreshStatus() }
-        tap.onDisabled = { NSLog("macmoji: event tap was disabled by macOS; re-enabled") }
+        tap.onDisabled = { NSLog("rev: event tap was disabled by macOS; re-enabled") }
         settings.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async {
                 self?.refreshStatus()
@@ -168,7 +168,7 @@ final class AppController: ObservableObject {
 
     private func startTap() {
         isTrusted = AXIsProcessTrusted()
-        if !tap.start() { NSLog("macmoji: CGEvent.tapCreate failed") }
+        if !tap.start() { NSLog("rev: CGEvent.tapCreate failed") }
         refreshStatus()
     }
 
@@ -185,7 +185,7 @@ final class AppController: ObservableObject {
             && !settings.excludesSnippetExpansion(context.frontmostBundleID)
         if !hasStarted { statusText = "Finish setup to start"; return }
         if !isTrusted { statusText = "Needs Accessibility permission" }
-        else if !tap.isRunning { statusText = "Event tap not running (relaunch macmoji)" }
+        else if !tap.isRunning { statusText = "Event tap not running (relaunch rev)" }
         else if settings.isBlocked(context.frontmostBundleID) { statusText = "Off in this app" }
         else if !settings.enabled && !snippetExpansionActive {
             statusText = "Inline snippets available — type :sn"
@@ -446,7 +446,7 @@ final class AppController: ObservableObject {
             let location = CaretLocator.locate()
             self.panel.show(rowCount: self.model.results.count, caret: location.rect)
             #if DEBUG
-            NSLog("macmoji: caret source=\(location.source.rawValue) app=\(self.context.frontmostBundleID ?? "?")")
+            NSLog("rev: caret source=\(location.source.rawValue) app=\(self.context.frontmostBundleID ?? "?")")
             #endif
         }
     }

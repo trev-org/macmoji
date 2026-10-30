@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MacmojiCore
+@testable import RevCore
 
 @Suite struct TriggerStateMachineTests {
     private func run(_ text: String, exact: Set<String> = []) -> (TriggerStateMachine, [TriggerStateMachine.Action]) {

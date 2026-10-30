@@ -33,7 +33,7 @@ final class LaunchAtLogin: ObservableObject {
         }
         refresh()
         if enabled && status == .requiresApproval && errorMessage == nil {
-            errorMessage = "macOS needs you to allow macmoji in System Settings → General → Login Items."
+            errorMessage = "macOS needs you to allow rev in System Settings → General → Login Items."
         }
     }
 
@@ -65,7 +65,7 @@ struct LaunchAtLoginControl: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle("Open macmoji automatically when I log in", isOn: Binding(
+            Toggle("Open rev automatically when I log in", isOn: Binding(
                 get: { launch.isEnabled || launch.requiresApproval },
                 set: { launch.setEnabled($0) }
             ))
@@ -78,7 +78,7 @@ struct LaunchAtLoginControl: View {
                 Button("Open Login Items Settings…") { launch.openLoginItemsSettings() }
             }
             if !launch.isInstalledInApplications {
-                Text("Tip: move Macmoji.app to /Applications for launch at login to work reliably.")
+                Text("Tip: move Rev.app to /Applications for launch at login to work reliably.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct MacmojiTool: Equatable, Hashable, Identifiable, Sendable {
+public struct RevTool: Equatable, Hashable, Identifiable, Sendable {
     public let id: String
     public let name: String
     public let keywords: [String]
@@ -21,13 +21,13 @@ public struct MacmojiTool: Equatable, Hashable, Identifiable, Sendable {
 
 /// Ordered registry backing the Tools launcher. Future features can register another tool.
 public struct ToolRegistry: Sendable {
-    public private(set) var tools: [MacmojiTool] = []
+    public private(set) var tools: [RevTool] = []
 
-    public init(tools: [MacmojiTool] = []) {
+    public init(tools: [RevTool] = []) {
         for tool in tools { register(tool) }
     }
 
-    public mutating func register(_ tool: MacmojiTool) {
+    public mutating func register(_ tool: RevTool) {
         if let index = tools.firstIndex(where: { $0.id == tool.id }) {
             tools[index] = tool
         } else {
@@ -35,11 +35,11 @@ public struct ToolRegistry: Sendable {
         }
     }
 
-    public func search(_ rawQuery: String) -> [MacmojiTool] {
+    public func search(_ rawQuery: String) -> [RevTool] {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return tools }
 
-        return tools.enumerated().compactMap { index, tool -> (MacmojiTool, Int, Int)? in
+        return tools.enumerated().compactMap { index, tool -> (RevTool, Int, Int)? in
             let qualities = ([tool.name] + tool.keywords).compactMap {
                 Self.matchQuality(query, candidate: $0.lowercased())
             }

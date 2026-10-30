@@ -1,17 +1,29 @@
 #if os(macOS)
 import SwiftUI
 import AppKit
+import RevCore
 
 @main
-struct MacmojiApp: App {
+struct RevApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var settings = AppSettings.shared
-    @StateObject private var clipboardHistory = ClipboardHistoryController.shared
-    @StateObject private var tools = ToolsController.shared
-    @StateObject private var snippets = SnippetController.shared
+    @StateObject private var settings: AppSettings
+    @StateObject private var clipboardHistory: ClipboardHistoryController
+    @StateObject private var tools: ToolsController
+    @StateObject private var snippets: SnippetController
+
+    init() {
+        let migration = LegacyDataMigration.migrate()
+        for error in migration.errors {
+            NSLog("rev: legacy data migration failed: \(error)")
+        }
+        _settings = StateObject(wrappedValue: AppSettings.shared)
+        _clipboardHistory = StateObject(wrappedValue: ClipboardHistoryController.shared)
+        _tools = StateObject(wrappedValue: ToolsController.shared)
+        _snippets = StateObject(wrappedValue: SnippetController.shared)
+    }
 
     var body: some Scene {
-        MenuBarExtra("macmoji", systemImage: "face.smiling") {
+        MenuBarExtra("rev", systemImage: "face.smiling") {
             MenuContent()
                 .environmentObject(settings)
                 .environmentObject(AppController.shared)

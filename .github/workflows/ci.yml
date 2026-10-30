@@ -1,4 +1,4 @@
-name: CI
+name: Rev CI
 on:
   push:
   pull_request:
@@ -16,15 +16,15 @@ jobs:
         run: xcodegen generate
       - name: Build app
         run: |
-          xcodebuild -project Macmoji.xcodeproj -scheme Macmoji -configuration Debug \
+          xcodebuild -project Rev.xcodeproj -scheme Rev -configuration Debug \
             -destination 'platform=macOS' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO build
-      - name: Unit tests (MacmojiCore)
-        working-directory: MacmojiCore
+      - name: Unit tests (RevCore)
+        working-directory: RevCore
         run: swift test
       - name: Emoji data is up to date
         working-directory: scripts
         run: |
           npm install --no-audit --no-fund
           node gen-emoji.mjs
-          git diff --exit-code -- ../MacmojiCore/Sources/MacmojiCore/Resources/emoji.json
+          git diff --exit-code -- ../RevCore/Sources/RevCore/Resources/emoji.json

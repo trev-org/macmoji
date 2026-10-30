@@ -1,5 +1,5 @@
 import Testing
-@testable import MacmojiCore
+@testable import RevCore
 
 @Suite struct ModifierChordTests {
     private let chord: ShortcutModifiers = [.option, .command]
@@ -47,13 +47,13 @@ import Testing
 }
 
 @Suite struct ToolRegistryTests {
-    private let emoji = MacmojiTool(
+    private let emoji = RevTool(
         id: "emoji",
         name: "Emoji Picker",
         keywords: ["emoji", "smiley"],
         systemImageName: "face.smiling"
     )
-    private let clipboard = MacmojiTool(
+    private let clipboard = RevTool(
         id: "clipboard",
         name: "Clipboard History",
         keywords: ["clipboard", "history", "paste"],
@@ -75,7 +75,7 @@ import Testing
 
     @Test func registeringExistingIDReplacesInPlace() {
         var registry = ToolRegistry(tools: [emoji, clipboard])
-        registry.register(MacmojiTool(
+        registry.register(RevTool(
             id: "emoji",
             name: "Emoji Search",
             systemImageName: "face.smiling"

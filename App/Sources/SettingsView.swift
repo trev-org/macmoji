@@ -1,7 +1,7 @@
 #if os(macOS)
 import SwiftUI
 import AppKit
-import MacmojiCore
+import RevCore
 
 struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
