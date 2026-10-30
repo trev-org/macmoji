@@ -19,11 +19,6 @@ struct MacmojiApp: App {
                 .environmentObject(tools)
                 .environmentObject(snippets)
         }
-        Settings {
-            SettingsView()
-                .environmentObject(settings)
-                .environmentObject(tools)
-        }
     }
 }
 

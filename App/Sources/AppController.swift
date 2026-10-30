@@ -17,6 +17,10 @@ final class AppController: ObservableObject {
     @Published private(set) var hasStarted = false
 
     private let settings = AppSettings.shared
+    private lazy var settingsWindow = SettingsWindowController(
+        settings: settings,
+        tools: ToolsController.shared
+    )
     private let permissions = PermissionManager()
     private let onboarding = OnboardingWindowController()
     private let context = AppContext()
@@ -98,6 +102,13 @@ final class AppController: ObservableObject {
     /// Opens the first-run setup window (also from the "Run setup again…" menu item).
     func showSetup() {
         onboarding.show(settings: settings, launch: LaunchAtLogin.shared, permissions: permissions)
+    }
+
+    /// Opens the retained AppKit window after the menu has finished handling the click.
+    func showSettings() {
+        DispatchQueue.main.async { [weak self] in
+            self?.settingsWindow.show()
+        }
     }
 
     /// Starts normal operation: event tap if trusted, else the Accessibility prompt.
