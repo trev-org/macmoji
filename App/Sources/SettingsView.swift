@@ -48,6 +48,20 @@ struct SettingsView: View {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
             }
+            Section("Snippets") {
+                Toggle("Expand snippet keywords", isOn: $settings.snippetExpansionEnabled)
+                Toggle(
+                    "Require a word boundary before keywords",
+                    isOn: $settings.snippetRequiresWordBoundary
+                )
+                .disabled(!settings.snippetExpansionEnabled)
+                Text("Keyword expansion always inserts by a temporary clipboard paste, then restores the previous clipboard.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Do not expand snippet keywords in these apps") {
+                BundleIDListEditor(items: $settings.snippetExcludedApps)
+            }
             Section("Clipboard history") {
                 Toggle("Enable clipboard history", isOn: $settings.clipboardHistoryEnabled)
                 Picker("Keep unpinned items", selection: $settings.clipboardRetention) {

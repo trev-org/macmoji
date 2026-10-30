@@ -3,12 +3,19 @@ import AppKit
 import CoreGraphics
 import Carbon.HIToolbox
 
-/// Replaces the typed ":shortcode" with an emoji using synthesized events.
+/// Replaces typed text using synthesized events.
 @MainActor
 final class Inserter {
     enum Strategy { case unicodeString, paste }
     var onPasteboardChange: (@MainActor (Int) -> Void)?
 
+    private static let transientPasteboardType = NSPasteboard.PasteboardType(
+        "org.nspasteboard.TransientType"
+    )
+    private typealias PasteboardSnapshot = [[(NSPasteboard.PasteboardType, Data)]]
+    private static var pasteTransactionID: UUID?
+    private static var rootPasteboardSnapshot: PasteboardSnapshot?
+    private static var temporaryChangeCount: Int?
     private let source = CGEventSource(stateID: .privateState)
     /// Pause between synthesized events (microseconds).
     private let spacing: useconds_t = 2_000
@@ -21,8 +28,14 @@ final class Inserter {
         deleteCharacters(deleteCount)
         switch strategy {
         case .unicodeString: typeUnicode(text)
-        case .paste: paste(text)
+        case .paste: paste(text, cursorOffset: 0)
         }
+    }
+
+    /// Snippets always use a transient clipboard paste, then move to their `{cursor}` position.
+    func replaceSnippet(deleteCount: Int, with text: String, cursorOffset: Int) {
+        deleteCharacters(deleteCount)
+        paste(text, cursorOffset: cursorOffset)
     }
 
     func deleteCharacters(_ count: Int) {
@@ -76,29 +89,83 @@ final class Inserter {
     }
 
     /// Clipboard fallback: save every item/type, paste, then restore if nobody else changed it.
-    private func paste(_ text: String) {
+    private func paste(_ text: String, cursorOffset: Int) {
         let pb = NSPasteboard.general
-        let saved: [[(NSPasteboard.PasteboardType, Data)]] = (pb.pasteboardItems ?? []).map { item in
-            item.types.compactMap { type in item.data(forType: type).map { (type, $0) } }
+        let continuesActiveTransaction: Bool
+        if Self.pasteTransactionID != nil, let changeCount = Self.temporaryChangeCount {
+            continuesActiveTransaction = pb.changeCount == changeCount
+        } else {
+            continuesActiveTransaction = false
         }
+        let saved = continuesActiveTransaction
+            ? (Self.rootPasteboardSnapshot ?? snapshot(pb))
+            : snapshot(pb)
+        let transactionID = UUID()
+        Self.pasteTransactionID = transactionID
+        Self.rootPasteboardSnapshot = saved
+
         pb.clearContents()
-        pb.setString(text, forType: .string)
+        let temporaryItem = NSPasteboardItem()
+        temporaryItem.setString(text, forType: .string)
+        temporaryItem.setData(Data(), forType: Self.transientPasteboardType)
+        guard pb.writeObjects([temporaryItem]) else {
+            restore(saved, to: pb)
+            clearPasteTransaction(id: transactionID)
+            onPasteboardChange?(pb.changeCount)
+            return
+        }
         let ourChange = pb.changeCount
+        Self.temporaryChangeCount = ourChange
         onPasteboardChange?(ourChange)
 
         tapKey(CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            guard pb.changeCount == ourChange else { return } // a clipboard manager or the user changed it
-            pb.clearContents()
-            let items: [NSPasteboardItem] = saved.map { pairs in
-                let item = NSPasteboardItem()
-                for (type, data) in pairs { item.setData(data, forType: type) }
-                return item
+        if cursorOffset > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                guard let self, Self.pasteTransactionID == transactionID else { return }
+                for _ in 0..<cursorOffset {
+                    self.tapKey(CGKeyCode(kVK_LeftArrow))
+                }
             }
-            if !items.isEmpty { pb.writeObjects(items) }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self, Self.pasteTransactionID == transactionID else { return }
+            guard pb.changeCount == ourChange else {
+                self.clearPasteTransaction(id: transactionID)
+                return
+            }
+            self.restore(saved, to: pb)
+            self.clearPasteTransaction(id: transactionID)
             self.onPasteboardChange?(pb.changeCount)
         }
+    }
+
+    private func snapshot(_ pasteboard: NSPasteboard) -> PasteboardSnapshot {
+        (pasteboard.pasteboardItems ?? []).map { item in
+            item.types.compactMap { type in
+                item.data(forType: type).map { (type, $0) }
+            }
+        }
+    }
+
+    private func clearPasteTransaction(id: UUID) {
+        guard Self.pasteTransactionID == id else { return }
+        Self.pasteTransactionID = nil
+        Self.rootPasteboardSnapshot = nil
+        Self.temporaryChangeCount = nil
+    }
+
+    private func restore(
+        _ snapshot: PasteboardSnapshot,
+        to pasteboard: NSPasteboard
+    ) {
+        pasteboard.clearContents()
+        let items: [NSPasteboardItem] = snapshot.map { pairs in
+            let item = NSPasteboardItem()
+            for (type, data) in pairs { item.setData(data, forType: type) }
+            return item
+        }
+        if !items.isEmpty { pasteboard.writeObjects(items) }
     }
 }
 #endif
