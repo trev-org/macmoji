@@ -2,10 +2,10 @@ import Foundation
 
 /// Ranked shortcode search.
 ///
-/// Match quality is a hard boundary: exact name > prefix > substring > fuzzy subsequence >
-/// keyword. Within one match tier, descending frecency is the first tie-break, followed by the
-/// shorter matched name and the emoji database order. A high usage score can therefore reorder
-/// equally good matches, but can never push a weak match above a stronger match tier.
+/// Any matching emoji with usage history ranks before an unused match, ordered by descending
+/// frecency. Equal frecency (including all never-used emoji) falls back to match quality:
+/// exact name > prefix > substring > fuzzy subsequence > keyword, then the shorter matched name
+/// and emoji database order.
 public struct EmojiSearch: Sendable {
     public enum Tier: Int, Comparable, Sendable {
         case exact = 0, prefix, substring, fuzzy, keyword
@@ -59,8 +59,8 @@ public struct EmojiSearch: Sendable {
         }
 
         scored.sort { a, b in
-            if a.0.tier != b.0.tier { return a.0.tier < b.0.tier }
             if a.1 != b.1 { return a.1 > b.1 }
+            if a.0.tier != b.0.tier { return a.0.tier < b.0.tier }
             if a.2 != b.2 { return a.2 < b.2 }
             return a.0.emoji.order < b.0.emoji.order
         }

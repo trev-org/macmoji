@@ -67,7 +67,8 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Enter and Tab insert the selected emoji and are not passed to the app (no newline / tab).
 - [ ] Esc closes the picker, leaves `:query` text, and is not passed to the app (e.g. does not exit full screen / close a sheet).
 - [ ] Clicking a row inserts it.
-- [ ] Ranking: `:fire` → 🔥 first; `:+1` → 👍; after choosing 👎 several times for `:thu`, it rises above 👍 but not above an exact match.
+- [ ] Ranking: with no history, `:eye` puts exact 👁 before prefix 👀. After choosing 👀, `:eye`
+  puts 👀 first; typing the exact closing form `:eye:` still auto-replaces with 👁.
 - [ ] Quit and relaunch: the usage-based order is retained. Menu → **Clear Emoji History** resets
   it; quit and relaunch again to confirm the clear persisted.
 - [ ] Multi-monitor: picker appears on the screen with the caret, including a screen above/left of the primary.
