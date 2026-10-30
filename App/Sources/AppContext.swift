@@ -42,9 +42,12 @@ final class AppContext {
     /// `nil` means the focused element could not be inspected; sensitive actions should fail closed.
     func focusedElementSecurity() -> Bool? {
         guard let el = AXHelpers.focusedElement() else { return nil }
-        let role = AXHelpers.string(el, kAXRoleAttribute)
+        guard let role = AXHelpers.string(el, kAXRoleAttribute) else { return nil }
+        if role == "AXSecureTextField" { return true }
         let subrole = AXHelpers.string(el, kAXSubroleAttribute)
-        return subrole == (kAXSecureTextFieldSubrole as String) || role == "AXSecureTextField"
+        if subrole == (kAXSecureTextFieldSubrole as String) { return true }
+        if role == (kAXTextFieldRole as String), subrole == nil { return nil }
+        return false
     }
 
     /// Electron builds its AX tree lazily; setting AXManualAccessibility on the app element turns it on.

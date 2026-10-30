@@ -18,6 +18,7 @@ final class SnippetController: ObservableObject {
     private var cachedKeywordIndex: SnippetKeywordIndex
     private var previousApplication: NSRunningApplication?
     private var pendingInsertionID: UUID?
+    private var hasShownPersistenceError = false
 
     private lazy var editor = SnippetEditorWindowController(store: store) { [weak self] in
         self?.refreshAfterMutation()
@@ -55,6 +56,9 @@ final class SnippetController: ObservableObject {
         inserter.onPasteboardChange = { changeCount in
             ClipboardHistoryController.shared.ignorePasteboardChange(changeCount)
         }
+        if let message = snippetStore.persistenceErrorDescription {
+            NSLog("macmoji: \(message)")
+        }
     }
 
     var isCapturingKeyboard: Bool {
@@ -74,6 +78,10 @@ final class SnippetController: ObservableObject {
             self.previousApplication = candidate
         } else {
             self.previousApplication = nil
+        }
+        if !hasShownPersistenceError, let message = store.persistenceErrorDescription {
+            hasShownPersistenceError = true
+            showAlert(title: "Couldn’t Load Snippets", message: message)
         }
         model.reset()
         isShowing = true

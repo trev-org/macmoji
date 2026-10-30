@@ -126,6 +126,18 @@ import Testing
         XCTAssertEqual(store.allSnippets().first { $0.name == "Address" }?.keyword, nil)
     }
 
+    @Test func corruptPersistenceIsNotOverwritten() throws {
+        let corrupt = Data("{not-json".utf8)
+        let storage = MemorySnippetStorage(data: corrupt)
+        let store = SnippetStore(storage: storage)
+
+        _ = try store.create(name: "Recovery", text: "Keep the source file", keyword: nil)
+        store.flush()
+
+        XCTAssertEqual(storage.data, corrupt)
+        XCTAssertTrue(store.persistenceErrorDescription != nil)
+    }
+
     @Test func searchUsesNameKeywordTextAndFrecency() throws {
         let clock = SnippetTestClock()
         let ids = SnippetIDSequence()
@@ -179,6 +191,10 @@ private final class SnippetIDSequence: @unchecked Sendable {
 private final class MemorySnippetStorage: SnippetStorage, @unchecked Sendable {
     private let lock = NSLock()
     private var storedData: Data?
+
+    init(data: Data? = nil) {
+        storedData = data
+    }
 
     var data: Data? {
         lock.lock(); defer { lock.unlock() }

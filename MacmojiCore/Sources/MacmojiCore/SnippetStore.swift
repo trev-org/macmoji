@@ -93,7 +93,13 @@ public final class SnippetStore: @unchecked Sendable {
         case raycast([RaycastSnippet])
     }
 
+    private enum LoadResult {
+        case success([Snippet])
+        case failure(String)
+    }
+
     private let lock = NSLock()
+    private let persistenceStateLock = NSLock()
     private let persistenceQueue = DispatchQueue(
         label: "com.trevorgerald.macmoji.snippet-persistence",
         qos: .utility
@@ -102,6 +108,8 @@ public final class SnippetStore: @unchecked Sendable {
     private let now: @Sendable () -> Date
     private let makeID: @Sendable () -> UUID
     private var storedSnippets: [Snippet]
+    private var persistenceBlocked = false
+    private var storedPersistenceError: String?
 
     public init(
         storage: (any SnippetStorage)? = nil,
@@ -111,12 +119,25 @@ public final class SnippetStore: @unchecked Sendable {
         self.storage = storage
         self.now = now
         self.makeID = makeID
-        storedSnippets = Self.load(from: storage)
+        switch Self.load(from: storage) {
+        case .success(let snippets):
+            storedSnippets = snippets
+        case .failure(let message):
+            storedSnippets = []
+            persistenceBlocked = true
+            storedPersistenceError = message
+        }
     }
 
     public var count: Int {
         lock.lock(); defer { lock.unlock() }
         return storedSnippets.count
+    }
+
+    /// A corrupt or unreadable source file is left untouched and blocks later automatic writes.
+    public var persistenceErrorDescription: String? {
+        persistenceStateLock.lock(); defer { persistenceStateLock.unlock() }
+        return storedPersistenceError
     }
 
     public func allSnippets() -> [Snippet] {
@@ -366,23 +387,59 @@ public final class SnippetStore: @unchecked Sendable {
     }
 
     private func schedulePersistence(_ snippets: [Snippet]) {
-        guard let storage else { return }
-        persistenceQueue.async {
-            let encoder = JSONEncoder()
-            guard let data = try? encoder.encode(Payload(snippets: snippets)) else { return }
-            try? storage.save(data)
+        guard let storage, !isPersistenceBlocked else { return }
+        persistenceQueue.async { [weak self] in
+            do {
+                let data = try JSONEncoder().encode(Payload(snippets: snippets))
+                try storage.save(data)
+                self?.clearPersistenceError()
+            } catch {
+                self?.recordPersistenceError(
+                    "Couldn’t save snippets: \(error.localizedDescription)"
+                )
+            }
         }
     }
 
-    private static func load(from storage: (any SnippetStorage)?) -> [Snippet] {
-        guard let storage,
-              let data = try? storage.load(),
-              let payload = try? JSONDecoder().decode(Payload.self, from: data),
-              payload.version == 1 else { return [] }
+    private var isPersistenceBlocked: Bool {
+        persistenceStateLock.lock(); defer { persistenceStateLock.unlock() }
+        return persistenceBlocked
+    }
 
+    private func recordPersistenceError(_ message: String) {
+        persistenceStateLock.lock()
+        storedPersistenceError = message
+        persistenceStateLock.unlock()
+    }
+
+    private func clearPersistenceError() {
+        persistenceStateLock.lock()
+        if !persistenceBlocked { storedPersistenceError = nil }
+        persistenceStateLock.unlock()
+    }
+
+    private static func load(from storage: (any SnippetStorage)?) -> LoadResult {
+        guard let storage else { return .success([]) }
+        let data: Data
+        do {
+            guard let loaded = try storage.load() else { return .success([]) }
+            data = loaded
+        } catch {
+            return .failure(
+                "Couldn’t read the snippets file. It was left untouched: \(error.localizedDescription)"
+            )
+        }
+        guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else {
+            return .failure("The snippets file is invalid and was left untouched.")
+        }
+        guard payload.version == 1 else {
+            return .failure(
+                "Snippet file version \(payload.version) is unsupported and was left untouched."
+            )
+        }
         var ids = Set<UUID>()
         var keywords = Set<String>()
-        return payload.snippets.filter { snippet in
+        let snippets = payload.snippets.filter { snippet in
             guard !snippet.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   !snippet.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   snippet.useCount >= 0,
@@ -393,5 +450,6 @@ public final class SnippetStore: @unchecked Sendable {
             guard let keyword = snippet.keyword, !keyword.isEmpty else { return true }
             return keywords.insert(keyword).inserted
         }
+        return .success(snippets)
     }
 }
