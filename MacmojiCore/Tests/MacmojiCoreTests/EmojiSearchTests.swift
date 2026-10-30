@@ -46,21 +46,50 @@ import Testing
         Emoji(emoji: "F", names: ["heart"], keywords: ["thumbprint"], order: 6),
     ])
 
-    @Test func testTierOrder() {
+    @Test func testNoHistoryUsesMatchTierOrder() {
         let r = EmojiSearch(store: small).search("thu", limit: 10)
         XCTAssertEqual(r.map(\.emoji.emoji), ["C", "A", "B", "D", "E", "F"])
         XCTAssertEqual(r.map(\.tier), [.exact, .prefix, .prefix, .substring, .fuzzy, .keyword])
     }
 
-    @Test func testFrecencyBoostsWithinTierOnly() {
+    @Test func testUsedEyesOutrankUnusedExactEye() {
+        let eyeStore = EmojiStore(emoji: [
+            Emoji(emoji: "👁", names: ["eye"], order: 1),
+            Emoji(emoji: "👀", names: ["eyes"], order: 2),
+        ])
         let clock = Clock()
         let usage = UsageStore(fileURL: nil, now: { clock.now })
-        usage.record("B"); usage.record("B")
-        for _ in 0..<100 { usage.record("E") }
+        usage.record("👀")
+
+        let r = EmojiSearch(store: eyeStore, usage: usage).search("eye", limit: 10)
+
+        XCTAssertEqual(r.map(\.emoji.emoji), ["👀", "👁"])
+        XCTAssertEqual(r.map(\.tier), [.prefix, .exact])
+    }
+
+    @Test func testUsedFuzzyAndKeywordMatchesOutrankUnusedExact() {
+        let clock = Clock()
+        let usage = UsageStore(fileURL: nil, now: { clock.now })
+        usage.record("E")
+        usage.record("F")
+
         let r = EmojiSearch(store: small, usage: usage).search("thu", limit: 10)
-        // B jumps ahead of A within the prefix tier. Even extreme use cannot move fuzzy E
-        // above exact/prefix/substring matches.
-        XCTAssertEqual(r.map(\.emoji.emoji), ["C", "B", "A", "D", "E", "F"])
+
+        // Equal frecency falls back to fuzzy before keyword; both used matches precede exact C.
+        XCTAssertEqual(r.map(\.emoji.emoji), ["E", "F", "C", "A", "B", "D"])
+    }
+
+    @Test func testHigherFrecencyWinsAmongUsedMatches() {
+        let clock = Clock()
+        let usage = UsageStore(fileURL: nil, now: { clock.now })
+        usage.record("E")
+        usage.record("F")
+        usage.record("F")
+
+        let r = EmojiSearch(store: small, usage: usage).search("thu", limit: 10)
+
+        // Higher-frecency keyword F outranks lower-frecency fuzzy E.
+        XCTAssertEqual(Array(r.prefix(2).map(\.emoji.emoji)), ["F", "E"])
     }
 
     @Test func testEmptyQueryReturnsHistoryOnly() {
