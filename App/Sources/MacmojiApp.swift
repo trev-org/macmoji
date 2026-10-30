@@ -26,5 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppController.shared.start()
         }
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            AppController.shared.flushEmojiHistory()
+        }
+    }
 }
 #endif

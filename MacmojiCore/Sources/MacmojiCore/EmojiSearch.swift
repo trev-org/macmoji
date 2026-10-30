@@ -1,10 +1,17 @@
 import Foundation
 
-/// Ranked shortcode search (plan decision 6):
-/// exact name > prefix > substring > fuzzy subsequence > keyword, frecency boost within each tier.
+/// Ranked shortcode search.
+///
+/// Match quality is a hard boundary: exact name > prefix > substring > fuzzy subsequence >
+/// keyword. Within one match tier, descending frecency is the first tie-break, followed by the
+/// shorter matched name and the emoji database order. A high usage score can therefore reorder
+/// equally good matches, but can never push a weak match above a stronger match tier.
 public struct EmojiSearch: Sendable {
     public enum Tier: Int, Comparable, Sendable {
         case exact = 0, prefix, substring, fuzzy, keyword
+        /// Query-free result selected from usage history.
+        case history
+
         public static func < (a: Tier, b: Tier) -> Bool { a.rawValue < b.rawValue }
     }
 
@@ -24,13 +31,33 @@ public struct EmojiSearch: Sendable {
     }
 
     public func search(_ rawQuery: String, limit: Int = 8) -> [Result] {
+        guard limit > 0 else { return [] }
         let query = rawQuery.lowercased()
-        guard !query.isEmpty else { return [] }
+        let usageScores = usage?.scores() ?? [:]
         var scored: [(Result, Double, Int)] = []
-        for e in store.emoji {
-            guard let (tier, name) = Self.match(query, e) else { continue }
-            scored.append((Result(emoji: e, matchedName: name, tier: tier), usage?.score(e.emoji) ?? 0, name.count))
+
+        if query.isEmpty {
+            // The current app waits for two shortcode characters before opening its picker, but
+            // query-free history results make this core API useful to future hotkey/empty states.
+            for emoji in store.emoji {
+                guard let score = usageScores[emoji.emoji], score > 0 else { continue }
+                scored.append((
+                    Result(emoji: emoji, matchedName: emoji.primaryName, tier: .history),
+                    score,
+                    emoji.primaryName.count
+                ))
+            }
+        } else {
+            for emoji in store.emoji {
+                guard let (tier, name) = Self.match(query, emoji) else { continue }
+                scored.append((
+                    Result(emoji: emoji, matchedName: name, tier: tier),
+                    usageScores[emoji.emoji] ?? 0,
+                    name.count
+                ))
+            }
         }
+
         scored.sort { a, b in
             if a.0.tier != b.0.tier { return a.0.tier < b.0.tier }
             if a.1 != b.1 { return a.1 > b.1 }
