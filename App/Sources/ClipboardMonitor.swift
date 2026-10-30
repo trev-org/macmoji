@@ -66,7 +66,11 @@ final class ClipboardMonitor {
         let changeCount = pasteboard.changeCount
         guard changeCount != lastChangeCount else { return }
         lastChangeCount = changeCount
-        if ignoredChangeCounts.remove(changeCount) != nil { return }
+        let shouldIgnore = ignoredChangeCounts.contains(changeCount)
+        // changeCount is monotonic for a pasteboard session. If several temporary writes occurred
+        // between polls, none of their older counts can be observed later.
+        ignoredChangeCounts = ignoredChangeCounts.filter { $0 > changeCount }
+        if shouldIgnore { return }
         guard isCaptureEnabled() else { return }
 
         let items = pasteboard.pasteboardItems ?? []

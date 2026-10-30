@@ -8,6 +8,10 @@ the emoji. Typing a full `:fire:` replaces it automatically.
 The same inline picker opens a local clipboard history: type `:cl`, choose **Clipboard History**,
 then search and paste an earlier item without leaving the keyboard.
 
+Raycast-style snippets provide reusable multi-line text with optional expansion keywords. Type a
+keyword such as `;sig` to expand it in place, or type `:sn` and choose **Snippets** to search,
+preview and insert one at the original cursor.
+
 Status: **M1 prototype.** The core logic is unit-tested; the macOS app code has not yet been
 compiled or run (it was written on Linux). See [TESTING.md](TESTING.md) and the
 plan in [docs/PLAN.md](docs/PLAN.md).
@@ -142,8 +146,9 @@ emoji is inserted by a clipboard paste that saves and restores your clipboard. U
 ranking are stored in `~/Library/Application Support/macmoji/usage.json` (up to 500 distinct
 emoji). Use menu bar → **Clear Emoji History** to reset them.
 
-Clipboard settings control capture, retention (1 day, 7 days by default, 30 days, 3 months or
-unlimited), and excluded source apps.
+Snippet settings independently enable keyword expansion, require a word boundary by default, and
+exclude selected apps by bundle ID. Clipboard settings control capture, retention (1 day, 7 days
+by default, 30 days, 3 months or unlimited), and excluded source apps.
 
 ## Tools launcher
 Tap and release **⌥⌘** together in under half a second to open Tools. Pressing any normal key or
@@ -158,6 +163,29 @@ Tools is a searchable registry designed for more entries later. It currently con
   inserts the selected emoji through the existing clipboard-paste path.
 - **Clipboard History:** opens the existing history panel while preserving the app and focused
   field where Tools was invoked.
+- **Snippets:** opens snippet search while preserving the app and focused field where Tools was
+  invoked.
+
+## Snippets
+- **Open and manage:** type `:sn` or `:snippet` in the normal inline picker, choose **Snippets**
+  from Tools, or use menu bar → **Snippets…**. Search covers name, keyword and text, with
+  recent/frequent use improving ranking.
+  Enter inserts into the app and cursor location where the panel was opened; ⌘E edits, ⌘N creates,
+  ⌘Backspace deletes and Esc closes. The menu also provides create, JSON import and JSON export.
+- **Keyword expansion:** each snippet can have one unique keyword such as `;sig` or `!email`.
+  Exact keywords expand anywhere through the existing event tap. A setting requires a word
+  boundary before the keyword by default; expansion can be disabled globally or for selected
+  bundle IDs without disabling snippet search.
+- **Placeholders:** `{clipboard}`, `{date}`, `{time}`, `{datetime}`, `{day}` and `{cursor}` are
+  expanded at insertion time. `{cursor}` moves the caret back to that location. Dates also support
+  custom formats and offsets, for example `{date format="MMM d, yyyy" offset="+2d"}`.
+- **Local data:** the versioned store is
+  `~/Library/Application Support/Macmoji/snippets.json`; writes are serialized off the main thread
+  and flushed on quit. Imports accept Macmoji exports and Raycast arrays containing
+  `{name, text, keyword}`.
+- **Insertion privacy:** snippets are pasted through a temporary item marked
+  `org.nspasteboard.TransientType`, then the previous clipboard contents are restored. Clipboard
+  history ignores the temporary value.
 
 ## Clipboard history
 - **Open it:** type `:cl`, `:clip`, `:hist`, `:clipboard` or another matching command query in the
@@ -225,7 +253,7 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
   opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.
 - The inline picker combines emoji with reusable command rows. Prefix/exact command matches lead
   emoji and weaker command matches follow them; command rows never participate in emoji frecency.
-  Clipboard History is the first command, with the same mechanism ready for future Snippets.
+  Clipboard History and Snippets use the same command mechanism.
 - Ranking puts matching emoji with usage history first, ordered by descending frecency. Ties and
   never-used emoji fall back to exact name → prefix → substring → fuzzy subsequence → keyword,
   then shorter matched name and database order. Frecency is
@@ -237,8 +265,10 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
 - The picker is a non-activating `NSPanel` hosting SwiftUI, placed via
   `kAXBoundsForRangeParameterizedAttribute`, falling back to the focused element's frame and
   then the mouse. Electron apps get `AXManualAccessibility = true`.
-- Insertion: synthesized Backspaces, then `CGEvent.keyboardSetUnicodeString`, or a
-  clipboard paste in paste-mode apps. Synthesized events are tagged so the tap ignores them.
+- Insertion: emoji use synthesized Backspaces followed by `CGEvent.keyboardSetUnicodeString`, or a
+  clipboard paste in paste-mode apps. Snippets always use the transient clipboard path so
+  multi-line text and placeholders are inserted reliably, then send left arrows for `{cursor}`.
+  Synthesized events are tagged so the tap ignores them.
 - Clipboard monitoring polls `NSPasteboard.changeCount` every 0.5 seconds without Accessibility.
   Index/blob writes run on a background serial queue and flush when the app terminates. Choosing
   a history item restores the previous app, writes the item to NSPasteboard and synthesizes ⌘V

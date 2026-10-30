@@ -81,6 +81,12 @@ final class ToolsController: ObservableObject {
             keywords: ["clipboard", "history", "paste"],
             systemImageName: "clipboard"
         ))
+        registry.register(MacmojiTool(
+            id: "snippets",
+            name: "Snippets",
+            keywords: ["snippet", "text", "template", "expand"],
+            systemImageName: "text.quote"
+        ))
         toolModel = ToolLauncherModel(registry: registry)
     }
 
@@ -111,7 +117,9 @@ final class ToolsController: ObservableObject {
     }
 
     func showTools() {
-        guard !isShowing, !ClipboardHistoryController.shared.isShowing else { return }
+        guard !isShowing,
+              !ClipboardHistoryController.shared.isShowing,
+              !SnippetController.shared.isCapturingKeyboard else { return }
         capturePreviousFocus()
         pendingInsertionID = nil
         toolModel.reset()
@@ -165,6 +173,14 @@ final class ToolsController: ObservableObject {
             toolsPanel.hide()
             activePanel = .none
             ClipboardHistoryController.shared.showHistory(
+                previousApplication: previousApplication,
+                focusedElement: previousFocusedElement
+            )
+
+        case "snippets":
+            toolsPanel.hide()
+            activePanel = .none
+            SnippetController.shared.showSnippets(
                 previousApplication: previousApplication,
                 focusedElement: previousFocusedElement
             )

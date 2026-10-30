@@ -51,6 +51,17 @@ final class AppSettings: ObservableObject {
     @Published var toolsHotKeyModifiers: Int {
         didSet { defaults.set(toolsHotKeyModifiers, forKey: "toolsHotKeyModifiers") }
     }
+    @Published var snippetExpansionEnabled: Bool {
+        didSet { defaults.set(snippetExpansionEnabled, forKey: "snippetExpansionEnabled") }
+    }
+    @Published var snippetRequiresWordBoundary: Bool {
+        didSet {
+            defaults.set(snippetRequiresWordBoundary, forKey: "snippetRequiresWordBoundary")
+        }
+    }
+    @Published var snippetExcludedApps: [String] {
+        didSet { defaults.set(snippetExcludedApps, forKey: "snippetExcludedApps") }
+    }
     /// Set only when the user finishes onboarding (closing it partway leaves this false).
     @Published var onboardingCompleted: Bool {
         didSet { defaults.set(onboardingCompleted, forKey: OnboardingFlow.completedDefaultsKey) }
@@ -72,6 +83,9 @@ final class AppSettings: ObservableObject {
                 GlobalHotKeyConfiguration.option | GlobalHotKeyConfiguration.command,
             "toolsHotKeyKey": "V",
             "toolsHotKeyModifiers": GlobalHotKeyConfiguration.defaultModifiers,
+            "snippetExpansionEnabled": true,
+            "snippetRequiresWordBoundary": true,
+            "snippetExcludedApps": [],
         ])
         enabled = defaults.bool(forKey: "enabled")
         blocklist = defaults.stringArray(forKey: "blocklist") ?? Self.defaultBlocklist
@@ -96,6 +110,9 @@ final class AppSettings: ObservableObject {
         toolsHotKeyModifiers = hotKeyModifiers == 0
             ? GlobalHotKeyConfiguration.defaultModifiers
             : hotKeyModifiers
+        snippetExpansionEnabled = defaults.bool(forKey: "snippetExpansionEnabled")
+        snippetRequiresWordBoundary = defaults.bool(forKey: "snippetRequiresWordBoundary")
+        snippetExcludedApps = defaults.stringArray(forKey: "snippetExcludedApps") ?? []
         onboardingCompleted = defaults.bool(forKey: OnboardingFlow.completedDefaultsKey)
     }
 
@@ -107,6 +124,13 @@ final class AppSettings: ObservableObject {
     func usesPasteMode(_ bundleID: String?) -> Bool {
         guard let bundleID else { return false }
         return pasteModeApps.contains(bundleID)
+    }
+
+    func excludesSnippetExpansion(_ bundleID: String?) -> Bool {
+        guard let bundleID else { return false }
+        return snippetExcludedApps.contains {
+            $0.caseInsensitiveCompare(bundleID) == .orderedSame
+        }
     }
 }
 #endif
