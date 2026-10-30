@@ -43,6 +43,37 @@ public struct SnippetKeywordMatch: Equatable, Sendable {
     public var deleteCount: Int { keyword.count }
 }
 
+/// Precomputed keyword data so the blocking event tap does not rebuild and sort it per key.
+public struct SnippetKeywordIndex: Sendable {
+    fileprivate struct Candidate: Sendable {
+        let snippetID: UUID
+        let keyword: String
+        let characters: [Character]
+    }
+
+    fileprivate let candidates: [Candidate]
+    fileprivate let longestKeywordCount: Int
+
+    public init(snippets: [Snippet]) {
+        candidates = snippets.compactMap { snippet in
+            guard let keyword = snippet.keyword, !keyword.isEmpty else { return nil }
+            return Candidate(
+                snippetID: snippet.id,
+                keyword: keyword,
+                characters: Array(keyword)
+            )
+        }.sorted {
+            if $0.characters.count != $1.characters.count {
+                return $0.characters.count > $1.characters.count
+            }
+            return $0.keyword < $1.keyword
+        }
+        longestKeywordCount = candidates.first?.characters.count ?? 0
+    }
+
+    public var isEmpty: Bool { candidates.isEmpty }
+}
+
 /// Tracks recently typed characters and reports exact keyword suffix matches.
 ///
 /// The caller owns lifecycle resets (focus changes, clicks and navigation keys), which keeps
@@ -65,33 +96,43 @@ public struct SnippetKeywordBuffer: Sendable {
         snippets: [Snippet],
         requiresWordBoundary: Bool
     ) -> SnippetKeywordMatch? {
-        let candidates = snippets.compactMap { snippet -> (Snippet, [Character])? in
-            guard let keyword = snippet.keyword, !keyword.isEmpty else { return nil }
-            return (snippet, Array(keyword))
-        }
-        guard let longest = candidates.map({ $0.1.count }).max() else {
+        type(
+            character,
+            index: SnippetKeywordIndex(snippets: snippets),
+            requiresWordBoundary: requiresWordBoundary
+        )
+    }
+
+    public mutating func type(
+        _ character: Character,
+        index: SnippetKeywordIndex,
+        requiresWordBoundary: Bool
+    ) -> SnippetKeywordMatch? {
+        guard !index.isEmpty else {
             reset()
             return nil
         }
 
         characters.append(character)
-        let retainedCount = longest + (requiresWordBoundary ? 1 : 0)
+        let retainedCount = index.longestKeywordCount + (requiresWordBoundary ? 1 : 0)
         if characters.count > retainedCount {
             characters.removeFirst(characters.count - retainedCount)
         }
 
-        // Prefer the longest suffix when imported data contains overlapping keywords.
-        for (snippet, keywordCharacters) in candidates.sorted(by: { $0.1.count > $1.1.count }) {
-            guard characters.count >= keywordCharacters.count,
-                  Array(characters.suffix(keywordCharacters.count)) == keywordCharacters else {
+        for candidate in index.candidates {
+            guard characters.count >= candidate.characters.count,
+                  Array(characters.suffix(candidate.characters.count)) == candidate.characters else {
                 continue
             }
-            if requiresWordBoundary, characters.count > keywordCharacters.count {
-                let preceding = characters[characters.count - keywordCharacters.count - 1]
+            if requiresWordBoundary, characters.count > candidate.characters.count {
+                let preceding = characters[characters.count - candidate.characters.count - 1]
                 guard !Self.isWordCharacter(preceding) else { continue }
             }
             reset()
-            return SnippetKeywordMatch(snippetID: snippet.id, keyword: String(keywordCharacters))
+            return SnippetKeywordMatch(
+                snippetID: candidate.snippetID,
+                keyword: candidate.keyword
+            )
         }
         return nil
     }
@@ -138,7 +179,7 @@ public enum SnippetSearch {
                 return lhs.0.name.localizedCaseInsensitiveCompare(rhs.0.name) == .orderedAscending
             }
             return lhs.0.id.uuidString < rhs.0.id.uuidString
-        }.map(\.0)
+        }.map { $0.0 }
     }
 
     private static func matchQuality(
