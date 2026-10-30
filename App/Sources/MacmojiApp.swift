@@ -8,6 +8,7 @@ struct MacmojiApp: App {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var clipboardHistory = ClipboardHistoryController.shared
     @StateObject private var tools = ToolsController.shared
+    @StateObject private var snippets = SnippetController.shared
 
     var body: some Scene {
         MenuBarExtra("macmoji", systemImage: "face.smiling") {
@@ -16,6 +17,7 @@ struct MacmojiApp: App {
                 .environmentObject(AppController.shared)
                 .environmentObject(clipboardHistory)
                 .environmentObject(tools)
+                .environmentObject(snippets)
         }
         Settings {
             SettingsView()
@@ -38,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated {
             AppController.shared.flushEmojiHistory()
             ClipboardHistoryController.shared.flush()
+            SnippetController.shared.flush()
         }
     }
 }

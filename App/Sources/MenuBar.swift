@@ -7,16 +7,22 @@ struct MenuContent: View {
     @EnvironmentObject var controller: AppController
     @EnvironmentObject var clipboardHistory: ClipboardHistoryController
     @EnvironmentObject var tools: ToolsController
+    @EnvironmentObject var snippets: SnippetController
 
     var body: some View {
         Text(controller.statusText)
         Divider()
-        Toggle("Enabled", isOn: $settings.enabled)
+        Toggle("Emoji Autocomplete", isOn: $settings.enabled)
         if let shortcut = tools.shortcutDisplay {
             Button("Tools…  \(shortcut)") { tools.showTools() }
         } else {
             Button("Tools…") { tools.showTools() }
         }
+        Button("Snippets…") { snippets.showSnippets() }
+        Button("Create Snippet…") { snippets.createSnippet() }
+        Button("Import Snippets…") { snippets.importSnippets() }
+        Button("Export Snippets…") { snippets.exportSnippets() }
+        Divider()
         Button("Clipboard History…") { clipboardHistory.showHistory() }
             .disabled(!settings.clipboardHistoryEnabled)
         Button(settings.clipboardHistoryPaused ? "Resume Clipboard History" : "Pause Clipboard History") {
