@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import ApplicationServices
 import Carbon.HIToolbox
 import Combine
 import Dispatch
@@ -17,6 +18,7 @@ final class SnippetController: ObservableObject {
     private let inserter = Inserter()
     private var cachedKeywordIndex: SnippetKeywordIndex
     private var previousApplication: NSRunningApplication?
+    private var previousFocusedElement: AXUIElement?
     private var pendingInsertionID: UUID?
     private var hasShownPersistenceError = false
 
@@ -69,15 +71,20 @@ final class SnippetController: ObservableObject {
         cachedKeywordIndex
     }
 
-    func showSnippets(previousApplication: NSRunningApplication? = nil) {
+    func showSnippets(
+        previousApplication: NSRunningApplication? = nil,
+        focusedElement: AXUIElement? = nil
+    ) {
         pendingInsertionID = nil
         let candidate = previousApplication ?? NSWorkspace.shared.frontmostApplication
         if let candidate,
            !candidate.isTerminated,
            candidate.processIdentifier != ProcessInfo.processInfo.processIdentifier {
             self.previousApplication = candidate
+            previousFocusedElement = focusedElement ?? AXHelpers.focusedElement()
         } else {
             self.previousApplication = nil
+            previousFocusedElement = nil
         }
         if !hasShownPersistenceError, let message = store.persistenceErrorDescription {
             hasShownPersistenceError = true
@@ -123,6 +130,9 @@ final class SnippetController: ObservableObject {
             do {
                 let summary = try store.importData(Data(contentsOf: url))
                 store.flush()
+                if let message = store.persistenceErrorDescription {
+                    throw SnippetStoreError.persistenceUnavailable(message)
+                }
                 DispatchQueue.main.async { [weak self] in
                     MainActor.assumeIsolated {
                         self?.refreshAfterMutation()
@@ -241,6 +251,10 @@ final class SnippetController: ObservableObject {
         if NSWorkspace.shared.frontmostApplication?.processIdentifier
             == application.processIdentifier {
             pendingInsertionID = nil
+            guard restoreFocusedElement() else {
+                NSSound.beep()
+                return
+            }
             store.recordUse(id: snippetID)
             model.refresh()
             inserter.replaceSnippet(
@@ -248,6 +262,12 @@ final class SnippetController: ObservableObject {
                 with: expansion.text,
                 cursorOffset: expansion.cursorOffset
             )
+            return
+        }
+        if let frontmost = NSWorkspace.shared.frontmostApplication,
+           frontmost.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            // The user chose another app while activation was pending.
+            pendingInsertionID = nil
             return
         }
         guard attemptsRemaining > 0 else {
@@ -270,9 +290,19 @@ final class SnippetController: ObservableObject {
         pendingInsertionID = nil
         let application = previousApplication
         panel.hide()
-        if let application, !application.isTerminated {
-            application.activate()
+        guard let application, !application.isTerminated else { return }
+        let operationID = UUID()
+        pendingInsertionID = operationID
+        guard application.activate() else {
+            pendingInsertionID = nil
+            NSSound.beep()
+            return
         }
+        restoreFocusWhenFrontmost(
+            application,
+            operationID: operationID,
+            attemptsRemaining: 20
+        )
     }
 
     private func expansion(for snippet: Snippet) -> SnippetExpansion {
@@ -282,6 +312,50 @@ final class SnippetController: ObservableObject {
                 clipboard: NSPasteboard.general.string(forType: .string) ?? ""
             )
         )
+    }
+
+    private func restoreFocusWhenFrontmost(
+        _ application: NSRunningApplication,
+        operationID: UUID,
+        attemptsRemaining: Int
+    ) {
+        guard pendingInsertionID == operationID, !application.isTerminated else {
+            pendingInsertionID = nil
+            return
+        }
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier
+            == application.processIdentifier {
+            pendingInsertionID = nil
+            if !restoreFocusedElement() { NSSound.beep() }
+            return
+        }
+        if let frontmost = NSWorkspace.shared.frontmostApplication,
+           frontmost.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            pendingInsertionID = nil
+            return
+        }
+        guard attemptsRemaining > 0 else {
+            pendingInsertionID = nil
+            NSSound.beep()
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.restoreFocusWhenFrontmost(
+                application,
+                operationID: operationID,
+                attemptsRemaining: attemptsRemaining - 1
+            )
+        }
+    }
+
+    @discardableResult
+    private func restoreFocusedElement() -> Bool {
+        guard let previousFocusedElement else { return true }
+        return AXUIElementSetAttributeValue(
+            previousFocusedElement,
+            kAXFocusedAttribute as CFString,
+            kCFBooleanTrue
+        ) == .success
     }
 
     private func showImportSummary(_ summary: SnippetImportSummary) {

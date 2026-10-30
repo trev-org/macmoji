@@ -131,9 +131,15 @@ import Testing
         let storage = MemorySnippetStorage(data: corrupt)
         let store = SnippetStore(storage: storage)
 
-        _ = try store.create(name: "Recovery", text: "Keep the source file", keyword: nil)
+        var mutationWasRejected = false
+        do {
+            _ = try store.create(name: "Recovery", text: "Keep the source file", keyword: nil)
+        } catch {
+            mutationWasRejected = true
+        }
         store.flush()
 
+        XCTAssertTrue(mutationWasRejected)
         XCTAssertEqual(storage.data, corrupt)
         XCTAssertTrue(store.persistenceErrorDescription != nil)
     }
