@@ -2,7 +2,7 @@
 import CoreGraphics
 import Foundation
 
-/// A single blocking (.defaultTap) session event tap for keyDown and mouse-down events.
+/// A single blocking (.defaultTap) session event tap for keyboard/modifier and mouse events.
 /// The handler returns true to swallow the event. Re-enables itself if macOS disables it.
 @MainActor
 final class KeyTap {
@@ -27,7 +27,10 @@ final class KeyTap {
     @discardableResult
     func start() -> Bool {
         if tap != nil { enable(); return true }
-        let types: [CGEventType] = [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown]
+        let types: [CGEventType] = [
+            .keyDown, .flagsChanged,
+            .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
+        ]
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << CGEventMask($1.rawValue)) }
         guard let port = CGEvent.tapCreate(
             tap: .cgSessionEventTap,

@@ -7,6 +7,7 @@ import Carbon.HIToolbox
 @MainActor
 final class Inserter {
     enum Strategy { case unicodeString, paste }
+    var onPasteboardChange: (@MainActor (Int) -> Void)?
 
     private let source = CGEventSource(stateID: .privateState)
     /// Pause between synthesized events (microseconds).
@@ -17,11 +18,19 @@ final class Inserter {
     }
 
     func replace(deleteCount: Int, with text: String, strategy: Strategy) {
-        for _ in 0..<deleteCount { tapKey(CGKeyCode(kVK_Delete)) }
+        deleteCharacters(deleteCount)
         switch strategy {
         case .unicodeString: typeUnicode(text)
         case .paste: paste(text)
         }
+    }
+
+    func deleteCharacters(_ count: Int) {
+        for _ in 0..<count { tapKey(CGKeyCode(kVK_Delete)) }
+    }
+
+    func pasteCurrentClipboard() {
+        tapKey(CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
     }
 
     // MARK: Events
@@ -75,6 +84,7 @@ final class Inserter {
         pb.clearContents()
         pb.setString(text, forType: .string)
         let ourChange = pb.changeCount
+        onPasteboardChange?(ourChange)
 
         tapKey(CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
 
@@ -87,6 +97,7 @@ final class Inserter {
                 return item
             }
             if !items.isEmpty { pb.writeObjects(items) }
+            self.onPasteboardChange?(pb.changeCount)
         }
     }
 }
