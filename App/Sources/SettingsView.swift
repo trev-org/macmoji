@@ -41,7 +41,7 @@ struct SettingsView: View {
                         )
                         .frame(width: 140, height: 24)
                     }
-                    Text("Click the shortcut field, then press a modified letter key.")
+                    Text("Click the shortcut field, then press a modified key (including Space).")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let error = tools.hotKeyError {
