@@ -6,6 +6,26 @@ import RevCore
 @main
 struct RevApp: App {
     private static let menuBarIconName = "MenuBarIcon"
+    private static let menuBarIcon: NSImage? = {
+        let name = NSImage.Name(menuBarIconName)
+        let image = NSImage(named: name) ?? Bundle.main
+            .url(forResource: menuBarIconName, withExtension: "svg")
+            .flatMap { NSImage(contentsOf: $0) }
+        guard let image else {
+            NSLog("rev: failed to load the menu bar icon")
+            return nil
+        }
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
+        if NSImage(named: name) == nil {
+            _ = image.setName(name)
+        }
+        guard NSImage(named: name) != nil else {
+            NSLog("rev: failed to register the menu bar icon")
+            return nil
+        }
+        return image
+    }()
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings: AppSettings
@@ -14,7 +34,7 @@ struct RevApp: App {
     @StateObject private var snippets: SnippetController
 
     init() {
-        Self.prepareMenuBarIcon()
+        _ = Self.menuBarIcon
         let migration = LegacyDataMigration.migrate()
         for error in migration.errors {
             NSLog("rev: legacy data migration failed: \(error)")
@@ -34,21 +54,6 @@ struct RevApp: App {
                 .environmentObject(tools)
                 .environmentObject(snippets)
         }
-    }
-
-    private static func prepareMenuBarIcon() {
-        let name = NSImage.Name(menuBarIconName)
-        if NSImage(named: name) == nil,
-           let url = Bundle.main.url(forResource: menuBarIconName, withExtension: "svg"),
-           let image = NSImage(contentsOf: url) {
-            _ = image.setName(name)
-        }
-        guard let image = NSImage(named: name) else {
-            NSLog("rev: failed to load the menu bar icon")
-            return
-        }
-        image.size = NSSize(width: 18, height: 18)
-        image.isTemplate = true
     }
 }
 
