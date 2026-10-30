@@ -55,7 +55,7 @@ public struct SnippetKeywordIndex: Sendable {
     fileprivate let longestKeywordCount: Int
 
     public init(snippets: [Snippet]) {
-        let candidates = snippets.compactMap { snippet in
+        let candidates: [Candidate] = snippets.compactMap { snippet -> Candidate? in
             guard let keyword = snippet.keyword, !keyword.isEmpty else { return nil }
             return Candidate(
                 snippetID: snippet.id,
