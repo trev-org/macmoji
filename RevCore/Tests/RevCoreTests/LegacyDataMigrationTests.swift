@@ -54,13 +54,13 @@ import Testing
         )
         XCTAssertTrue(firstResult.errors.isEmpty)
 
-        XCTAssertEqual(try read(destination.appendingPathComponent("snippets.json")), "new snippets")
-        XCTAssertEqual(
+        try XCTAssertEqual(try read(destination.appendingPathComponent("snippets.json")), "new snippets")
+        try XCTAssertEqual(
             try read(destination.appendingPathComponent("clipboard-history.json")),
             "old history"
         )
-        XCTAssertEqual(try read(destination.appendingPathComponent("usage.json")), "usage")
-        XCTAssertEqual(
+        try XCTAssertEqual(try read(destination.appendingPathComponent("usage.json")), "usage")
+        try XCTAssertEqual(
             try read(
                 destination
                     .appendingPathComponent("clipboard-blobs", isDirectory: true)
@@ -68,7 +68,7 @@ import Testing
             ),
             "image"
         )
-        XCTAssertEqual(
+        try XCTAssertEqual(
             try read(
                 destination
                     .appendingPathComponent("clipboard-blobs", isDirectory: true)
@@ -76,7 +76,10 @@ import Testing
             ),
             "thumbnail"
         )
-        XCTAssertEqual(try read(primary.appendingPathComponent("snippets.json")), "old snippets")
+        try XCTAssertEqual(
+            try read(primary.appendingPathComponent("snippets.json")),
+            "old snippets"
+        )
 
         try write("late legacy data", to: primary.appendingPathComponent("late.json"))
         let repeated = LegacyDataMigration.migrate(
