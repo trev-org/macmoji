@@ -18,7 +18,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        settingsWindow.title = "macmoji Settings"
+        settingsWindow.title = "rev Settings"
         settingsWindow.isReleasedWhenClosed = false
         settingsWindow.collectionBehavior.insert(.moveToActiveSpace)
         settingsWindow.contentView = NSHostingView(rootView: rootView)

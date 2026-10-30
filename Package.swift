@@ -1,17 +1,17 @@
 // swift-tools-version:5.9
-// SwiftPM build of the Macmoji app, for machines with only the Command Line Tools (no Xcode).
+// SwiftPM build of the Rev app, for machines with only the Command Line Tools (no Xcode).
 // Build the .app with scripts/build-app.sh. The XcodeGen project (project.yml) still works too.
 import PackageDescription
 
 let package = Package(
-    name: "Macmoji",
+    name: "Rev",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "Macmoji", targets: ["MacmojiApp"])],
-    dependencies: [.package(path: "MacmojiCore")],
+    products: [.executable(name: "Rev", targets: ["RevApp"])],
+    dependencies: [.package(path: "RevCore")],
     targets: [
         .executableTarget(
-            name: "MacmojiApp",
-            dependencies: [.product(name: "MacmojiCore", package: "MacmojiCore")],
+            name: "RevApp",
+            dependencies: [.product(name: "RevCore", package: "RevCore")],
             path: "App/Sources",
             linkerSettings: [
                 .linkedFramework("AppKit"),

@@ -31,7 +31,7 @@ public struct EmojiStore: Sendable {
         // Inside a SwiftPM-assembled .app the resource bundle lives in Contents/Resources;
         // look there first so we never depend on SwiftPM's build-directory fallback path.
         let appBundled = Bundle.main.resourceURL
-            .map { $0.appendingPathComponent("MacmojiCore_MacmojiCore.bundle") }
+            .map { $0.appendingPathComponent("RevCore_RevCore.bundle") }
             .flatMap(Bundle.init(url:))?
             .url(forResource: "emoji", withExtension: "json")
         guard let url = appBundled ?? Bundle.module.url(forResource: "emoji", withExtension: "json") else {

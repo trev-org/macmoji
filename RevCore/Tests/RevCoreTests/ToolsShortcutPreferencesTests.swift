@@ -1,5 +1,5 @@
 import Testing
-@testable import MacmojiCore
+@testable import RevCore
 
 @Suite struct ToolsShortcutPreferencesTests {
     @Test func freshAndLegacyDefaultsMigrateToOptionSpace() {

@@ -1,13 +1,13 @@
 #if os(macOS)
 import SwiftUI
-import MacmojiCore
+import RevCore
 
 @MainActor
 final class ToolLauncherModel: ObservableObject {
     @Published var query = "" {
         didSet { if query != oldValue { refresh() } }
     }
-    @Published private(set) var results: [MacmojiTool] = []
+    @Published private(set) var results: [RevTool] = []
     @Published var selection = 0
 
     private let registry: ToolRegistry
@@ -17,7 +17,7 @@ final class ToolLauncherModel: ObservableObject {
         refresh()
     }
 
-    var selected: MacmojiTool? {
+    var selected: RevTool? {
         results.indices.contains(selection) ? results[selection] : nil
     }
 

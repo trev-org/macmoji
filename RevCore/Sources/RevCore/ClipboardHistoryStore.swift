@@ -25,7 +25,7 @@ public struct JSONFileClipboardHistoryStorage: ClipboardHistoryStorage, @uncheck
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        return applicationSupport.appendingPathComponent("Macmoji", isDirectory: true)
+        return applicationSupport.appendingPathComponent("Rev", isDirectory: true)
     }
 
     public func loadIndex() throws -> Data? {
@@ -76,7 +76,7 @@ public final class ClipboardHistoryStore: @unchecked Sendable {
 
     private let lock = NSLock()
     private let persistenceQueue = DispatchQueue(
-        label: "com.trevorgerald.macmoji.clipboard-history-persistence",
+        label: "com.trevorgerald.rev.clipboard-history-persistence",
         qos: .utility
     )
     private let storage: (any ClipboardHistoryStorage)?

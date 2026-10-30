@@ -2,7 +2,7 @@
 import AppKit
 import ApplicationServices
 import SwiftUI
-import MacmojiCore
+import RevCore
 
 /// First-run setup: skin tone → launch at login → Accessibility → done.
 @MainActor
@@ -64,7 +64,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
                          styleMask: [.titled, .closable, .fullSizeContentView],
                          backing: .buffered, defer: false)
-        w.title = "Set up macmoji"
+        w.title = "Set up rev"
         w.titlebarAppearsTransparent = true
         w.isReleasedWhenClosed = false
         w.delegate = self
@@ -116,7 +116,7 @@ struct OnboardingView: View {
                 }
                 Spacer()
                 if model.flow.isLast {
-                    Button("Start using macmoji") { model.finish() }
+                    Button("Start using rev") { model.finish() }
                         .keyboardShortcut(.defaultAction)
                 } else {
                     Button("Next") { model.next() }
@@ -169,7 +169,7 @@ private struct LaunchStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("macmoji only works while it's running. Start it automatically when you log in?")
+            Text("rev only works while it's running. Start it automatically when you log in?")
                 .fixedSize(horizontal: false, vertical: true)
             LaunchAtLoginControl(launch: launch)
         }
@@ -183,13 +183,13 @@ private struct AccessibilityStep: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("To notice ':' shortcodes, use the arrow/Enter/Tab/Esc keys in the picker, find the text cursor and type the emoji, macOS requires the Accessibility permission.")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("macmoji never reads typing in password fields. Emoji usage and enabled clipboard history are stored only on this Mac; sensitive and excluded-app clipboard items are skipped.")
+            Text("rev never reads typing in password fields. Emoji usage and enabled clipboard history are stored only on this Mac; sensitive and excluded-app clipboard items are skipped.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if model.isTrusted {
                 Label("Access granted", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             } else {
-                Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on Macmoji under Privacy & Security → Accessibility.\n3. This step moves on by itself once access is granted.")
+                Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on Rev under Privacy & Security → Accessibility.\n3. This step moves on by itself once access is granted.")
                     .font(.callout)
                 HStack {
                     Button("Request Access") { model.permissions.requestSystemPrompt() }
@@ -213,10 +213,10 @@ private struct FinishStep: View {
                 Text("Press \(shortcutDisplay) to open Tools: Emoji Picker, Clipboard History, and Snippets.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
-                Text("Open Tools from the smiley menu to use Emoji Picker, Clipboard History, and Snippets.")
+                Text("Open Tools from the lightning-bolt menu to use Emoji Picker, Clipboard History, and Snippets.")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            Text("macmoji lives in the menu bar (the smiley). It's off in Slack and Discord by default.")
+            Text("rev lives in the menu bar (the lightning bolt). It's off in Slack and Discord by default.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

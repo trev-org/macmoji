@@ -2,7 +2,7 @@
 import AppKit
 import Carbon.HIToolbox
 import SwiftUI
-import MacmojiCore
+import RevCore
 
 /// Reusable keyable panel shell for searchable list features (clipboard now, snippets later).
 final class SearchableListPanel: NSPanel {

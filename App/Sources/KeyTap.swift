@@ -7,7 +7,7 @@ import Foundation
 @MainActor
 final class KeyTap {
     /// Tag written into `eventSourceUserData` of events we synthesize, so the tap ignores them.
-    static let selfEventTag: Int64 = 0x6D61_636D_6F6A_69 // "macmoji"
+    static let selfEventTag: Int64 = 0x72_65_76 // "rev"
 
     typealias Handler = @MainActor (CGEventType, CGEvent) -> Bool
     private let handler: Handler

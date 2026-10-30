@@ -1,9 +1,9 @@
 #if os(macOS)
 import AppKit
 import Carbon.HIToolbox
-import MacmojiCore
+import RevCore
 
-private let toolsHotKeySignature: OSType = 0x4D4D544C // "MMTL"
+private let toolsHotKeySignature: OSType = 0x5256544C // "RVTL"
 
 private func toolsHotKeyEventHandler(
     _ nextHandler: EventHandlerCallRef?,

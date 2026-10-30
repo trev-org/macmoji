@@ -1,4 +1,4 @@
-# macmoji
+# rev
 
 A macOS menu-bar utility that gives Slack-style `:` emoji autocomplete in any app.
 Type `:` and a couple of letters (`:thu`) and a small picker pops up next to the text cursor;
@@ -32,22 +32,34 @@ project.yml                  XcodeGen spec (the .xcodeproj is generated, not com
 Config/Signing.xcconfig      signing defaults; put your team in Config/Signing.local.xcconfig
 App/Sources/                 the macOS app (AppKit / SwiftUI / ApplicationServices / CoreGraphics)
 App/Resources/               Info.plist (LSUIElement), entitlements (no sandbox)
-MacmojiCore/                 portable Swift package: emoji, clipboard, snippet and Tools models/search/persistence + tests
-scripts/make-dmg.sh          builds dist/Macmoji-<version>.dmg
+RevCore/                     portable Swift package: emoji, clipboard, snippet and Tools models/search/persistence + tests
+scripts/make-dmg.sh          builds dist/Rev-<version>.dmg
 packaging/                   DMG background art, icon generator, previews
-scripts/gen-emoji.mjs        regenerates MacmojiCore/.../Resources/emoji.json from emojibase-data
+scripts/gen-emoji.mjs        regenerates RevCore/.../Resources/emoji.json from emojibase-data
 .github/workflows/ci.yml     macOS CI: generate, build, test
 ```
 
 ## Installing
-1. Open `Macmoji-<version>.dmg` (from a GitHub Actions artifact/release, or built with
+1. Open `Rev-<version>.dmg` (from a GitHub Actions artifact/release, or built with
    `scripts/make-dmg.sh`).
-2. Drag **Macmoji** onto the **Applications** folder in the window that appears.
-3. Eject the disk image, then open Macmoji from Applications. If the DMG wasn't notarized,
-   macOS will block the first launch: right-click Macmoji → **Open**, or allow it in System
-   Settings → Privacy & Security (or `xattr -dr com.apple.quarantine /Applications/Macmoji.app`).
+2. Drag **Rev** onto the **Applications** folder in the window that appears.
+3. Eject the disk image, then open Rev from Applications. If the DMG wasn't notarized,
+   macOS will block the first launch: right-click Rev → **Open**, or allow it in System
+   Settings → Privacy & Security (or `xattr -dr com.apple.quarantine /Applications/Rev.app`).
 4. The setup window walks you through skin tone, launch at login and the Accessibility
    permission. Then type `:thu` anywhere.
+
+## Upgrading from macmoji
+On its first launch, rev copies existing data from
+`~/Library/Application Support/Macmoji/` (and the lowercase `macmoji/` path, when present) into
+`~/Library/Application Support/Rev/`. It also imports preferences from the old
+`com.trevorgerald.macmoji` defaults domain, including onboarding, skin tone, shortcuts,
+blocklists and snippet/clipboard settings. Existing Rev files and settings are never overwritten,
+and the old data is left in place.
+
+Because Rev has a new bundle identifier, macOS does not carry over security approvals.
+Accessibility and Login Items access must be granted again. After confirming that Rev has your
+settings, snippets and clipboard history, the old `Macmoji.app` can be deleted.
 
 ## Build and run on a Mac
 Requirements: macOS 14+, Xcode 15.3+ (Swift 5.10+), Homebrew.
@@ -56,61 +68,61 @@ the app and package still compile in Swift 5 language mode.
 
 ```sh
 brew install xcodegen
-git clone https://github.com/trev-org/macmoji.git && cd macmoji
+git clone https://github.com/trev-org/rev.git && cd rev
 # (recommended) set up signing first, see "Signing" below
 xcodegen generate
-open Macmoji.xcodeproj
+open Rev.xcodeproj
 ```
-In Xcode pick the **Macmoji** scheme and **My Mac**, then Run (⌘R). A smiley appears in the
+In Xcode pick the **Rev** scheme and **My Mac**, then Run (⌘R). A lightning bolt appears in the
 menu bar. Or from the command line:
 ```sh
-xcodebuild -project Macmoji.xcodeproj -scheme Macmoji -configuration Debug -derivedDataPath build build
-open build/Build/Products/Debug/Macmoji.app
+xcodebuild -project Rev.xcodeproj -scheme Rev -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/Rev.app
 ```
-Unit tests: `cd MacmojiCore && swift test`.
+Unit tests: `cd RevCore && swift test`.
 
-Always test the bundled `Macmoji.app`. Running core code through `swift run` or a terminal
+Always test the bundled `Rev.app`. Running core code through `swift run` or a terminal
 would attribute permissions to Terminal instead.
 
 ### Without Xcode (Command Line Tools only)
 
 ```sh
-scripts/build-app.sh          # swift build -c release --arch arm64 → build/Macmoji.app (ad-hoc signed)
-open build/Macmoji.app
-scripts/make-dmg.sh build/Macmoji.app   # or: scripts/make-dmg.sh --swiftpm
-(cd MacmojiCore && swift test)
+scripts/build-app.sh          # swift build -c release --arch arm64 → build/Rev.app (ad-hoc signed)
+open build/Rev.app
+scripts/make-dmg.sh build/Rev.app   # or: scripts/make-dmg.sh --swiftpm
+(cd RevCore && swift test)
 ```
 
 The root `Package.swift` builds the app as a SwiftPM executable (Swift 5 language mode, same as the
 Xcode project). `ARCHS="arm64 x86_64"` gives a universal build. Ad-hoc signing changes the code
 signature on every rebuild, so macOS may ask for Accessibility again; re-grant it (or remove and
-re-add macmoji) in System Settings → Privacy & Security → Accessibility.
+re-add rev) in System Settings → Privacy & Security → Accessibility.
 
 ## First-run setup
-On first launch macmoji opens a setup window **before it captures anything** (the event tap
+On first launch rev opens a setup window **before it captures anything** (the event tap
 does not start until setup is finished). Steps, with Back/Next:
 1. **Default skin tone**: pick one of six 👋 variants (saved to the skin-tone setting).
 2. **Launch at login**: yes/no toggle using `SMAppService.mainApp`. If macOS answers
    "requires approval", a button opens System Settings → General → Login Items.
 3. **Accessibility** (see below). The step moves on by itself once access is granted.
-4. **You're all set**: try `:thu`. Clicking *Start using macmoji* saves the
+4. **You're all set**: try `:thu`. Clicking *Start using rev* saves the
    `onboardingCompleted` flag and starts the app.
 
 If you close or quit setup partway, it shows again next launch. After it's finished, later
 launches go straight to running. Menu bar → **Run setup again…** reopens it. To force a fresh
-first run: `defaults delete com.trevorgerald.macmoji onboardingCompleted`.
+first run: `defaults delete com.trevorgerald.rev onboardingCompleted`.
 
 ## Granting Accessibility
 In the setup's Accessibility step (or, if the grant is later revoked, the
-"macmoji needs Accessibility" window):
+"rev needs Accessibility" window):
 1. Click **Request Access**, then **Open System Settings**
    (System Settings → Privacy & Security → Accessibility).
-2. Turn on **Macmoji** (use **+** to add it from `build/Build/Products/Debug/` or Xcode's
+2. Turn on **Rev** (use **+** to add it from `build/Build/Products/Debug/` or Xcode's
    DerivedData if it is not listed).
 3. Setup advances by itself within a second; the menu shows "Active" once it's running.
 
-If it stays inactive: remove the Macmoji entry with **–**, add it again, and relaunch.
-Reset it completely with `tccutil reset Accessibility com.trevorgerald.macmoji`.
+If it stays inactive: remove the Rev entry with **–**, add it again, and relaunch.
+Reset it completely with `tccutil reset Accessibility com.trevorgerald.rev`.
 
 ## Signing (so the permission survives rebuilds)
 macOS ties the Accessibility grant to the app's code signature. The default config signs
@@ -129,7 +141,7 @@ each rebuild. Use an **Apple Development** certificate (a free Apple ID works):
    DEVELOPMENT_TEAM = XXXXXXXXXX
    ```
 4. `xcodegen generate`, build, grant Accessibility once. Later rebuilds keep the grant.
-   Check with `codesign -dv --verbose=2 build/Build/Products/Debug/Macmoji.app`.
+   Check with `codesign -dv --verbose=2 build/Build/Products/Debug/Rev.app`.
 
 If you switch identities, re-grant once (or `tccutil reset` as above). Developer ID signing and
 notarization only matter if you distribute it to others.
@@ -140,13 +152,13 @@ live system status, since you can also change it in System Settings → General 
 For it to work reliably, **copy the built app to `/Applications`** (or `~/Applications`) and
 enable it from there; registering a copy that lives in Xcode's DerivedData or `build/` makes
 the login item point at that transient path. A stable signature (see Signing) also helps. If
-the toggle shows "Waiting for approval", use *Open Login Items Settings…* and allow Macmoji.
+the toggle shows "Waiting for approval", use *Open Login Items Settings…* and allow Rev.
 
 ## Settings
 Menu bar → Settings…: enable/disable, default skin tone, launch at login, the per-app blocklist (bundle IDs;
 Slack and Discord by default) and "paste mode" apps (Terminal and iTerm2 by default), where the
 emoji is inserted by a clipboard paste that saves and restores your clipboard. Usage counts for
-ranking are stored in `~/Library/Application Support/macmoji/usage.json` (up to 500 distinct
+ranking are stored in `~/Library/Application Support/Rev/usage.json` (up to 500 distinct
 emoji). Use menu bar → **Clear Emoji History** to reset them.
 
 Snippet settings independently enable keyword expansion, require a word boundary by default, and
@@ -186,8 +198,8 @@ points such as `:cl`, `:sn`, or the menu bar do not add this launcher-only back 
   expanded at insertion time. `{cursor}` moves the caret back to that location. Dates also support
   custom formats and offsets, for example `{date format="MMM d, yyyy" offset="+2d"}`.
 - **Local data:** the versioned store is
-  `~/Library/Application Support/Macmoji/snippets.json`; writes are serialized off the main thread
-  and flushed on quit. Imports accept Macmoji exports and Raycast arrays containing
+  `~/Library/Application Support/Rev/snippets.json`; writes are serialized off the main thread
+  and flushed on quit. Imports accept Rev exports and Raycast arrays containing
   `{name, text, keyword}`.
 - **Insertion privacy:** snippets are pasted through a temporary item marked
   `org.nspasteboard.TransientType`, then the previous clipboard contents are restored. Clipboard
@@ -206,7 +218,7 @@ points such as `:cl`, `:sn`, or the menu bar do not add this launcher-only back 
   LastPass and Dashlane are excluded by default; edit the bundle-ID list in Settings. Pause or
   resume capture from the menu bar.
 - **Retention:** the versioned index and image blobs live under
-  `~/Library/Application Support/Macmoji/`. Duplicate content moves to the top. At most 1,000
+  `~/Library/Application Support/Rev/`. Duplicate content moves to the top. At most 1,000
   unpinned entries are kept; pinned entries are exempt from age and count pruning. **Clear
   Clipboard History…** removes only unpinned entries after confirmation.
 - **Panel controls:** type to search; filter All/Text/Images/Links/Files; ↑/↓ select; Enter pastes
@@ -216,8 +228,8 @@ points such as `:cl`, `:sn`, or the menu bar do not add this launcher-only back 
 ## Packaging (DMG)
 ```sh
 brew install xcodegen create-dmg
-scripts/make-dmg.sh                       # builds Release, writes dist/Macmoji-<version>.dmg
-scripts/make-dmg.sh path/to/Macmoji.app   # or package an existing build
+scripts/make-dmg.sh                       # builds Release, writes dist/Rev-<version>.dmg
+scripts/make-dmg.sh path/to/Rev.app       # or package an existing build
 ```
 The DMG window is 660×400 with no toolbar, the app icon on the left, an Applications alias on
 the right and `packaging/dmg-background.png` (+ `@2x`, merged into a Retina TIFF) behind them.
@@ -252,7 +264,7 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
 
 ## How it works
 - A single blocking `CGEventTap` (session, keyboard/modifier and mouse events) feeds typed characters to
-  `TriggerStateMachine` (MacmojiCore). The default ⌥Space Tools shortcut is registered through
+  `TriggerStateMachine` (RevCore). The default ⌥Space Tools shortcut is registered through
   Carbon; when a modifier-only Tools chord is configured, the event tap observes `flagsChanged`
   and mouse activity without swallowing those events. It never swallows `:` or letters; while the
   picker is open it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.

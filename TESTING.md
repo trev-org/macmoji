@@ -1,49 +1,72 @@
-# Testing macmoji
+# Testing rev
 
 ## Automated (CI and local)
-- `cd MacmojiCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
+- `cd RevCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
   frecency, picker-command matching, modifier-chord detection, tool-registry filtering, launcher
   back-navigation policy, clipboard classification/privacy/search/dedup/pruning, index/blob
   persistence, snippet keyword matching/word boundaries/placeholders/search/import/persistence,
-  and bundled emoji JSON integrity. Runs on macOS and Linux with a Swift 6 toolchain (the targets
-  use Swift 5 language mode).
+  legacy data/defaults migration, and bundled emoji JSON integrity. Runs on macOS and Linux with
+  a Swift 6 toolchain (the targets use Swift 5 language mode).
 - CI (`.github/workflows/ci.yml`, macos-15 runner): `xcodegen generate`, `xcodebuild build`
   (unsigned), `swift test`, and a check that `emoji.json` matches a fresh regeneration.
 
 CI cannot grant Accessibility to a custom app, so everything below is manual.
 
 ## Manual checklist (run on the bundled, signed app; not `swift run`)
-Run from Xcode (Debug logs the caret source per app in Console: filter on `macmoji`).
+Run from Xcode (Debug logs the caret source per app in Console: filter on `rev`).
 
 ### DMG
-- [ ] `scripts/make-dmg.sh` finishes and writes `dist/Macmoji-0.1.0.dmg`; without signing env vars it prints the Gatekeeper note.
-- [ ] Opening the DMG shows a 660×400 window, no toolbar/status bar, background with arrow and "Drag to Applications", Macmoji icon left and Applications alias right, both on the arrow line; sharp on a Retina display.
-- [ ] Volume icon in Finder sidebar/desktop is the macmoji icon; app icon shows in Finder, Dock-less app switcher and Applications.
+- [ ] `scripts/make-dmg.sh` finishes and writes `dist/Rev-0.1.0.dmg`; without signing env vars it prints the Gatekeeper note.
+- [ ] Opening the DMG shows a 660×400 window, no toolbar/status bar, background with arrow and "Drag to Applications", Rev icon left and Applications alias right, both on the arrow line; sharp on a Retina display.
+- [ ] Volume icon in Finder sidebar/desktop is the rev icon; app icon shows in Finder, Dock-less app switcher and Applications.
 - [ ] Dragging to Applications copies it; launching from /Applications shows setup.
 - [ ] Fallback path: with create-dmg uninstalled the layout is the same.
-- [ ] With `DEVELOPER_ID_APPLICATION` + `NOTARY_PROFILE`: `spctl -a -vv /Applications/Macmoji.app` says "accepted, source=Notarized Developer ID"; `codesign -dv` shows `flags=0x10000(runtime)`; event tap + insertion still work with the hardened runtime.
+- [ ] With `DEVELOPER_ID_APPLICATION` + `NOTARY_PROFILE`: `spctl -a -vv /Applications/Rev.app` says "accepted, source=Notarized Developer ID"; `codesign -dv` shows `flags=0x10000(runtime)`; event tap + insertion still work with the hardened runtime.
 - [ ] On a second Mac, the unsigned DMG shows the Gatekeeper warning (expected) and the notarized one opens cleanly.
-- [ ] Release DMG workflow (tag or manual run) uploads a `Macmoji-dmg` artifact.
+- [ ] Release DMG workflow (tag or manual run) uploads a `Rev-dmg` artifact.
+
+### Menu bar icon
+- [ ] Build through Xcode and verify the menu bar shows the 18pt Rev lightning bolt, not the old
+  smiley. Check light mode, dark mode and the highlighted/pressed menu state; macOS should tint it.
+- [ ] Build with `scripts/build-app.sh`, confirm
+  `build/Rev.app/Contents/Resources/MenuBarIcon.svg` exists, then launch that app and verify the
+  same icon loads and tints correctly.
+- [ ] The app icon and DMG artwork still use their existing art; the menu bar glyph is not reused
+  for either one.
+
+### Upgrade migration
+- [ ] Start with the old `Macmoji.app` data and defaults, including completed onboarding, a
+  non-default skin tone/Tools shortcut, custom blocklists, snippets, clipboard history and an
+  image blob. Make sure `~/Library/Application Support/Rev/` does not exist.
+- [ ] Launch Rev: onboarding stays completed; all old settings are present; usage, snippets,
+  clipboard entries and image previews load from `Application Support/Rev`.
+- [ ] Confirm the old `Application Support/Macmoji` (or lowercase `macmoji`) data is still present;
+  migration copies it instead of moving it.
+- [ ] Change a Rev setting and data file, then relaunch. The migration does not overwrite the new
+  values or re-copy deleted legacy data.
+- [ ] Grant Accessibility and enable Rev under Login Items again; neither approval transfers to
+  the new `com.trevorgerald.rev` bundle identifier.
+- [ ] After confirming the migration, delete the old `Macmoji.app`; Rev continues to work.
 
 ### First-run onboarding
-Reset first: `defaults delete com.trevorgerald.macmoji` and
-`tccutil reset Accessibility com.trevorgerald.macmoji`.
-- [ ] First launch: the "Set up macmoji" window appears centered, frontmost and focused; menu shows "Finish setup to start".
+Reset first: `defaults delete com.trevorgerald.rev` and
+`tccutil reset Accessibility com.trevorgerald.rev`.
+- [ ] First launch: the "Set up rev" window appears centered, frontmost and focused; menu shows "Finish setup to start".
 - [ ] Before finishing, typing `:thu` anywhere does nothing (no tap; no Accessibility prompt window besides setup).
 - [ ] Before finishing, copying text does not add it to clipboard history.
 - [ ] Step 1: six 👋 tones shown; clicking one highlights it and "Selected: …" updates; Back is hidden; Next works.
 - [ ] Step 2: Back returns to step 1 with the selection kept. Toggle on → status "On" (or "Waiting for approval" + Open Login Items Settings… button that opens General → Login Items). Toggle off → "Off". Errors show in red.
 - [ ] Step 3: Next disabled until granted. Request Access / Open System Settings work. Granting it moves to step 4 within ~1 s and brings the window back to the front.
 - [ ] Step 3 when already granted: shows "Access granted" and Next is enabled.
-- [ ] Step 4: "Start using macmoji" closes the window; `:thu` now works; Settings shows the chosen skin tone.
+- [ ] Step 4: "Start using rev" closes the window; `:thu` now works; Settings shows the chosen skin tone.
 - [ ] Close the window at step 2 (or Quit from the menu): next launch shows setup again from step 1.
 - [ ] After finishing: relaunch goes straight to running, no setup window.
-- [ ] Menu → "Run setup again…" reopens setup while macmoji keeps working; finishing again changes nothing else.
-- [ ] Finish setup, then revoke Accessibility and relaunch: the separate "macmoji needs Accessibility" prompt appears (not setup).
+- [ ] Menu → "Run setup again…" reopens setup while rev keeps working; finishing again changes nothing else.
+- [ ] Finish setup, then revoke Accessibility and relaunch: the separate "rev needs Accessibility" prompt appears (not setup).
 
 ### Settings window
 - [ ] With no Dock icon present, choose menu → **Settings…** while another app is active. The
-  macmoji Settings window appears in front and accepts keyboard input.
+  rev Settings window appears in front and accepts keyboard input.
 - [ ] Close Settings, switch to another app, and choose **Settings…** again. The same behavior
   works repeatedly, including from a different Space.
 - [ ] Click the shortcut recorder, then close Settings without pressing a key. Typing in another
@@ -51,8 +74,8 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 
 ### Launch at login (test with the app copied to /Applications, signed as in README)
 - [ ] Settings → Launch at login toggle reflects the real state (compare System Settings → General → Login Items).
-- [ ] Turn it off in System Settings, reactivate macmoji / reopen Settings: toggle shows Off.
-- [ ] Toggle on, log out and back in: macmoji starts (smiley in menu bar), no setup window.
+- [ ] Turn it off in System Settings, reactivate rev / reopen Settings: toggle shows Off.
+- [ ] Toggle on, log out and back in: rev starts (lightning bolt in menu bar), no setup window.
 - [ ] Toggle off, log out and in: it does not start.
 - [ ] Running from DerivedData/`build/`: the "move to /Applications" tip shows; note what status register() reports.
 - [ ] Record whether macOS showed a "Background Items Added" notification or required approval.
@@ -95,7 +118,7 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Copy plain text, an https URL, one and multiple Finder files, PNG/TIFF images, and hex colors
   (`#abc`, `#112233`, `#11223380`). Each appears with the correct type, source app and timestamp;
   image previews stay responsive and blobs exist under
-  `~/Library/Application Support/Macmoji/clipboard-blobs/`.
+  `~/Library/Application Support/Rev/clipboard-blobs/`.
 - [ ] A large image remains responsive while its thumbnail is prepared off-main; images over
   50 MB are skipped.
 - [ ] Copy the same item twice with another item between: it moves to the top without duplicating.
@@ -118,7 +141,7 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
   quits or cannot activate, the item is copied but is not pasted elsewhere. Clipboard writes
   performed by the panel do not create duplicate history entries.
 - [ ] Quit immediately after copying, relaunch and verify the item persisted. The JSON index is
-  versioned and all data remains local under Application Support/Macmoji.
+  versioned and all data remains local under Application Support/Rev.
 
 ### Snippets
 - [ ] Menu → **Create Snippet…** opens a focused editor. Save multi-line text with a name and
@@ -133,7 +156,7 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
   the text after placeholder expansion.
 - [ ] Open the panel from TextEdit, then switch selection and press Enter: TextEdit is restored and
   the snippet is pasted at the original caret. ⌘E edits, ⌘N creates, ⌘Backspace deletes and Esc
-  restores focus without inserting. If the original app quits, Macmoji does not paste elsewhere.
+  restores focus without inserting. If the original app quits, Rev does not paste elsewhere.
 - [ ] Create keywords `;sig` and `!email`. At the beginning of a document and after whitespace,
   typing each exact keyword expands it; a partial keyword does not. With word-boundary mode on,
   `word;sig` does not expand. Turn the boundary requirement off and confirm it does.
@@ -153,15 +176,15 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Before expansion, copy both text and an image. The snippet is pasted, clipboard history does
   not record the temporary value, and the original clipboard item and all of its pasteboard types
   are restored shortly afterward.
-- [ ] Export snippets, delete them, then import the Macmoji JSON and verify metadata/use counts
+- [ ] Export snippets, delete them, then import the Rev JSON and verify metadata/use counts
   survive. Import a Raycast-style array of `{name, text, keyword}` and verify valid entries are
   added while duplicate keywords are reported as skipped.
 - [ ] Quit immediately after creating or using a snippet, relaunch, and verify
-  `~/Library/Application Support/Macmoji/snippets.json` is versioned and contains the latest use
+  `~/Library/Application Support/Rev/snippets.json` is versioned and contains the latest use
   count and timestamps.
 
 ### Permissions and lifecycle
-- [ ] After setup, with the grant revoked: "macmoji needs Accessibility" window appears; menu shows "Needs Accessibility permission" and a "Grant Accessibility…" item.
+- [ ] After setup, with the grant revoked: "rev needs Accessibility" window appears; menu shows "Needs Accessibility permission" and a "Grant Accessibility…" item.
 - [ ] Granting it there closes the window within ~1 s and the menu shows "Active".
 - [ ] Revoke the grant while running: within ~3 s the tap stops, typing in other apps is unaffected (no stuck keyboard). Re-grant: it resumes without relaunch.
 - [ ] Rebuild with an Apple Development identity: the grant survives. (With ad-hoc signing it is expected to be lost.)

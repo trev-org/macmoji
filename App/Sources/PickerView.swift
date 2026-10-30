@@ -1,6 +1,6 @@
 #if os(macOS)
 import SwiftUI
-import MacmojiCore
+import RevCore
 
 @MainActor
 final class PickerModel: ObservableObject {

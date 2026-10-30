@@ -4,7 +4,7 @@ import ApplicationServices
 import Carbon.HIToolbox
 import Combine
 import Dispatch
-import MacmojiCore
+import RevCore
 
 @MainActor
 final class ClipboardHistoryController: ObservableObject {
@@ -18,7 +18,7 @@ final class ClipboardHistoryController: ObservableObject {
     private let monitor = ClipboardMonitor()
     private let inserter = Inserter()
     private let captureQueue = DispatchQueue(
-        label: "com.trevorgerald.macmoji.clipboard-capture",
+        label: "com.trevorgerald.rev.clipboard-capture",
         qos: .utility
     )
     private var previousApplication: NSRunningApplication?

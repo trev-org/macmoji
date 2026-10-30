@@ -1,4 +1,4 @@
-// Regenerates MacmojiCore/Sources/MacmojiCore/Resources/emoji.json from emojibase-data (MIT).
+// Regenerates RevCore/Sources/RevCore/Resources/emoji.json from emojibase-data (MIT).
 // Usage: cd scripts && npm install && node gen-emoji.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -19,6 +19,6 @@ for (const e of data) {
   out.push(entry);
 }
 out.sort((a, b) => a.o - b.o);
-const target = new URL("../MacmojiCore/Sources/MacmojiCore/Resources/emoji.json", import.meta.url);
+const target = new URL("../RevCore/Sources/RevCore/Resources/emoji.json", import.meta.url);
 writeFileSync(target, JSON.stringify({ source: `emojibase-data ${pkgVersion}`, emoji: out }));
 console.log(`wrote ${out.length} emoji from emojibase-data ${pkgVersion}`);

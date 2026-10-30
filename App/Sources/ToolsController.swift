@@ -3,7 +3,7 @@ import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 import Combine
-import MacmojiCore
+import RevCore
 
 @MainActor
 final class ToolsController: ObservableObject {
@@ -69,19 +69,19 @@ final class ToolsController: ObservableObject {
 
     private init() {
         var registry = ToolRegistry()
-        registry.register(MacmojiTool(
+        registry.register(RevTool(
             id: "emoji",
             name: "Emoji Picker",
             keywords: ["emoji", "smiley", "reaction"],
             systemImageName: "face.smiling"
         ))
-        registry.register(MacmojiTool(
+        registry.register(RevTool(
             id: "clipboard",
             name: "Clipboard History",
             keywords: ["clipboard", "history", "paste"],
             systemImageName: "clipboard"
         ))
-        registry.register(MacmojiTool(
+        registry.register(RevTool(
             id: "snippets",
             name: "Snippets",
             keywords: ["snippet", "text", "template", "expand"],

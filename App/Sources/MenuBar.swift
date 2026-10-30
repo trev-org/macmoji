@@ -40,7 +40,7 @@ struct MenuContent: View {
             .keyboardShortcut(",")
         Button("Clear Emoji History") { controller.clearEmojiHistory() }
         Divider()
-        Button("Quit macmoji") { NSApp.terminate(nil) }
+        Button("Quit rev") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
 }

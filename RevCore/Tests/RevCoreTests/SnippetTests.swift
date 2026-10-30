@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MacmojiCore
+@testable import RevCore
 
 @Suite struct SnippetTests {
     @Test func keywordBufferMatchesExactSuffixAndHonorsWordBoundary() {

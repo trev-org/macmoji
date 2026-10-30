@@ -1,6 +1,6 @@
 #if os(macOS)
 import AppKit
-import MacmojiCore
+import RevCore
 
 /// Polls NSPasteboard without requiring Accessibility permission.
 @MainActor

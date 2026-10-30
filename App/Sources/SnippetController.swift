@@ -4,7 +4,7 @@ import ApplicationServices
 import Carbon.HIToolbox
 import Combine
 import Dispatch
-import MacmojiCore
+import RevCore
 import UniformTypeIdentifiers
 
 @MainActor
@@ -59,7 +59,7 @@ final class SnippetController: ObservableObject {
             ClipboardHistoryController.shared.ignorePasteboardChange(changeCount)
         }
         if let message = snippetStore.persistenceErrorDescription {
-            NSLog("macmoji: \(message)")
+            NSLog("rev: \(message)")
         }
     }
 
@@ -156,7 +156,7 @@ final class SnippetController: ObservableObject {
         let savePanel = NSSavePanel()
         savePanel.title = "Export Snippets"
         savePanel.allowedContentTypes = [.json]
-        savePanel.nameFieldStringValue = "Macmoji Snippets.json"
+        savePanel.nameFieldStringValue = "Rev Snippets.json"
         guard savePanel.runModal() == .OK, let url = savePanel.url else { return }
 
         let store = self.store
