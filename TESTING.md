@@ -2,9 +2,9 @@
 
 ## Automated (CI and local)
 - `cd MacmojiCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
-  frecency, picker-command matching, clipboard classification/privacy/search/dedup/pruning,
-  index/blob persistence, and bundled emoji JSON integrity. Runs on macOS and Linux with a Swift
-  6 toolchain (the targets use Swift 5 language mode).
+  frecency, picker-command matching, modifier-chord detection, tool-registry filtering, clipboard
+  classification/privacy/search/dedup/pruning, index/blob persistence, and bundled emoji JSON
+  integrity. Runs on macOS and Linux with a Swift 6 toolchain (the targets use Swift 5 language mode).
 - CI (`.github/workflows/ci.yml`, macos-15 runner): `xcodegen generate`, `xcodebuild build`
   (unsigned), `swift test`, and a check that `emoji.json` matches a fresh regeneration.
 
@@ -47,10 +47,24 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Running from DerivedData/`build/`: the "move to /Applications" tip shows; note what status register() reports.
 - [ ] Record whether macOS showed a "Background Items Added" notification or required approval.
 
+### Tools launcher
+- [ ] On a fresh install, quickly press and release ⌥⌘ together: Tools opens. Hold for at least
+  0.5 seconds: nothing opens. Press a non-modifier key or move/click/scroll the mouse while holding
+  ⌥⌘: nothing opens afterward and the app's normal ⌥⌘+key shortcut still works.
+- [ ] Settings → Tools launcher switches among ⌥⌘, ⌃⌥, ⇧⌘ and ⌃⌘ modifier chords. Each configured
+  chord works and the old one stops. Set the shortcut to Off and confirm no chord opens Tools.
+- [ ] Select Keyboard shortcut, click its recorder and press a modified letter. The shortcut is
+  displayed in Menu → **Tools…**, works globally through Carbon, and reports a conflict if already
+  registered by another app.
+- [ ] Tools opens near the mouse with Emoji Picker and Clipboard History. Search by tool name or
+  keyword, navigate with ↑/↓, open with Enter/double-click, and close with Esc.
+- [ ] Open Tools from a text field, then Emoji Picker. Empty search shows frequently used emoji;
+  text search uses existing frecency order. Enter restores the original app and focused field,
+  inserts the chosen skin-tone-aware emoji, and restores the prior clipboard.
+- [ ] Open Clipboard History through Tools and verify its Enter action pastes into the field that
+  was focused before Tools opened. Repeat with the target app on another Space.
+
 ### Clipboard history
-- [ ] On a fresh install the global shortcut is off. Menu → **Clipboard History…** opens the
-  panel without showing a shortcut; enabling the shortcut in Settings defaults it to ⌘⇧V,
-  displays it in the menu and opens the panel globally. Change its key/modifiers and retest.
 - [ ] Type `:cl`, `:clip`, `:hist`, `:clipboard` and `:paste`: the visually distinct
   **Clipboard History** command appears. Prefix/keyword-prefix matches lead emoji; a weak fuzzy
   command match follows emoji. Emoji ranking remains unchanged.
@@ -71,8 +85,8 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Set each retention option and relaunch. Expired unpinned entries are removed; pinned entries
   remain. Creating more than the configured/core-tested cap does not remove pinned entries.
 - [ ] Pause from the menu, copy several values, and confirm none are recorded; resume and confirm
-  capture continues. Disable the feature in Settings and confirm monitoring, inline command and
-  optional hotkey stop.
+  capture continues. Disable the feature in Settings and confirm monitoring and the inline command
+  stop; Tools remains available but refuses the disabled Clipboard History tool.
 - [ ] Copy from 1Password, Bitwarden, Keychain Access, LastPass and Dashlane when installed: no
   entry is recorded, including when switching apps immediately after copying. Add TextEdit to the
   excluded bundle-ID list and verify it is skipped, then remove it. Confirm concealed/transient

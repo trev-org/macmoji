@@ -39,15 +39,17 @@ final class AppSettings: ObservableObject {
     @Published var clipboardExcludedApps: [String] {
         didSet { defaults.set(clipboardExcludedApps, forKey: "clipboardExcludedApps") }
     }
-    /// Optional secondary entry point. Off by default; inline `:` commands remain available.
-    @Published var clipboardHotKeyEnabled: Bool {
-        didSet { defaults.set(clipboardHotKeyEnabled, forKey: "clipboardHotKeyEnabled") }
+    @Published var toolsShortcutMode: ToolsShortcutMode {
+        didSet { defaults.set(toolsShortcutMode.rawValue, forKey: "toolsShortcutMode") }
     }
-    @Published var clipboardHotKeyKey: String {
-        didSet { defaults.set(clipboardHotKeyKey, forKey: "clipboardHotKeyKey") }
+    @Published var toolsChordModifiers: Int {
+        didSet { defaults.set(toolsChordModifiers, forKey: "toolsChordModifiers") }
     }
-    @Published var clipboardHotKeyModifiers: Int {
-        didSet { defaults.set(clipboardHotKeyModifiers, forKey: "clipboardHotKeyModifiers") }
+    @Published var toolsHotKeyKey: String {
+        didSet { defaults.set(toolsHotKeyKey, forKey: "toolsHotKeyKey") }
+    }
+    @Published var toolsHotKeyModifiers: Int {
+        didSet { defaults.set(toolsHotKeyModifiers, forKey: "toolsHotKeyModifiers") }
     }
     /// Set only when the user finishes onboarding (closing it partway leaves this false).
     @Published var onboardingCompleted: Bool {
@@ -65,9 +67,11 @@ final class AppSettings: ObservableObject {
             "clipboardHistoryPaused": false,
             "clipboardRetention": ClipboardRetention.sevenDays.rawValue,
             "clipboardExcludedApps": ClipboardPrivacy.defaultExcludedBundleIdentifiers,
-            "clipboardHotKeyEnabled": false,
-            "clipboardHotKeyKey": "V",
-            "clipboardHotKeyModifiers": ClipboardHotKey.defaultModifiers,
+            "toolsShortcutMode": ToolsShortcutMode.modifierChord.rawValue,
+            "toolsChordModifiers":
+                GlobalHotKeyConfiguration.option | GlobalHotKeyConfiguration.command,
+            "toolsHotKeyKey": "V",
+            "toolsHotKeyModifiers": GlobalHotKeyConfiguration.defaultModifiers,
         ])
         enabled = defaults.bool(forKey: "enabled")
         blocklist = defaults.stringArray(forKey: "blocklist") ?? Self.defaultBlocklist
@@ -80,11 +84,17 @@ final class AppSettings: ObservableObject {
         ) ?? .sevenDays
         clipboardExcludedApps = defaults.stringArray(forKey: "clipboardExcludedApps")
             ?? ClipboardPrivacy.defaultExcludedBundleIdentifiers
-        clipboardHotKeyEnabled = defaults.bool(forKey: "clipboardHotKeyEnabled")
-        clipboardHotKeyKey = defaults.string(forKey: "clipboardHotKeyKey") ?? "V"
-        let hotKeyModifiers = defaults.integer(forKey: "clipboardHotKeyModifiers")
-        clipboardHotKeyModifiers = hotKeyModifiers == 0
-            ? ClipboardHotKey.defaultModifiers
+        toolsShortcutMode = ToolsShortcutMode(
+            rawValue: defaults.string(forKey: "toolsShortcutMode") ?? ""
+        ) ?? .modifierChord
+        let chordModifiers = defaults.integer(forKey: "toolsChordModifiers")
+        toolsChordModifiers = chordModifiers == 0
+            ? GlobalHotKeyConfiguration.option | GlobalHotKeyConfiguration.command
+            : chordModifiers
+        toolsHotKeyKey = defaults.string(forKey: "toolsHotKeyKey") ?? "V"
+        let hotKeyModifiers = defaults.integer(forKey: "toolsHotKeyModifiers")
+        toolsHotKeyModifiers = hotKeyModifiers == 0
+            ? GlobalHotKeyConfiguration.defaultModifiers
             : hotKeyModifiers
         onboardingCompleted = defaults.bool(forKey: OnboardingFlow.completedDefaultsKey)
     }

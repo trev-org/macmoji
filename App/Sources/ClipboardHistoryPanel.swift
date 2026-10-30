@@ -7,12 +7,14 @@ import MacmojiCore
 /// Reusable keyable panel shell for searchable list features (clipboard now, snippets later).
 final class SearchableListPanel: NSPanel {
     static let panelSize = NSSize(width: 820, height: 500)
+    let preferredSize: NSSize
     var handleKeyEvent: ((NSEvent) -> Bool)?
     var onHide: (() -> Void)?
 
-    init() {
+    init(size: NSSize = SearchableListPanel.panelSize) {
+        preferredSize = size
         super.init(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
             backing: .buffered,
             defer: true
@@ -40,12 +42,12 @@ final class SearchableListPanel: NSPanel {
     func showOnActiveScreen() {
         let point = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? NSRect(origin: point, size: Self.panelSize)
+        let visible = screen?.visibleFrame ?? NSRect(origin: point, size: preferredSize)
         let origin = NSPoint(
-            x: visible.midX - Self.panelSize.width / 2,
-            y: visible.midY - Self.panelSize.height / 2
+            x: visible.midX - preferredSize.width / 2,
+            y: visible.midY - preferredSize.height / 2
         )
-        setFrame(NSRect(origin: origin, size: Self.panelSize), display: true)
+        setFrame(NSRect(origin: origin, size: preferredSize), display: true)
         NSApp.activate()
         makeKeyAndOrderFront(nil)
         focusFirstTextField()

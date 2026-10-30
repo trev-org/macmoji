@@ -1,10 +1,11 @@
 #if os(macOS)
 import AppKit
 import Carbon.HIToolbox
+import MacmojiCore
 
-private let clipboardHotKeySignature: OSType = 0x4D4D4348 // "MMCH"
+private let toolsHotKeySignature: OSType = 0x4D4D544C // "MMTL"
 
-private func clipboardHotKeyEventHandler(
+private func toolsHotKeyEventHandler(
     _ nextHandler: EventHandlerCallRef?,
     _ event: EventRef?,
     _ userData: UnsafeMutableRawPointer?
@@ -21,7 +22,7 @@ private func clipboardHotKeyEventHandler(
         &identifier
     )
     guard status == noErr else { return status }
-    guard identifier.signature == clipboardHotKeySignature, identifier.id == 1 else {
+    guard identifier.signature == toolsHotKeySignature, identifier.id == 1 else {
         return OSStatus(eventNotHandledErr)
     }
     DispatchQueue.main.async {
@@ -32,11 +33,50 @@ private func clipboardHotKeyEventHandler(
     return noErr
 }
 
-struct ClipboardHotKey {
-    static let command = 1 << 0
-    static let shift = 1 << 1
-    static let option = 1 << 2
-    static let control = 1 << 3
+enum ToolsShortcutMode: String, CaseIterable {
+    case disabled
+    case modifierChord
+    case regularKey
+
+    var label: String {
+        switch self {
+        case .disabled: return "Off"
+        case .modifierChord: return "Modifier chord"
+        case .regularKey: return "Keyboard shortcut"
+        }
+    }
+}
+
+struct ModifierChordOption: Identifiable {
+    let modifiers: Int
+    let label: String
+    var id: Int { modifiers }
+
+    static let available: [ModifierChordOption] = [
+        ModifierChordOption(
+            modifiers: GlobalHotKeyConfiguration.option | GlobalHotKeyConfiguration.command,
+            label: "⌥⌘"
+        ),
+        ModifierChordOption(
+            modifiers: GlobalHotKeyConfiguration.control | GlobalHotKeyConfiguration.option,
+            label: "⌃⌥"
+        ),
+        ModifierChordOption(
+            modifiers: GlobalHotKeyConfiguration.shift | GlobalHotKeyConfiguration.command,
+            label: "⇧⌘"
+        ),
+        ModifierChordOption(
+            modifiers: GlobalHotKeyConfiguration.control | GlobalHotKeyConfiguration.command,
+            label: "⌃⌘"
+        ),
+    ]
+}
+
+struct GlobalHotKeyConfiguration {
+    static let command = Int(ShortcutModifiers.command.rawValue)
+    static let option = Int(ShortcutModifiers.option.rawValue)
+    static let control = Int(ShortcutModifiers.control.rawValue)
+    static let shift = Int(ShortcutModifiers.shift.rawValue)
     static let defaultModifiers = command | shift
     static let availableKeys = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init)
 
@@ -57,12 +97,30 @@ struct ClipboardHotKey {
     }
 
     var displayString: String {
+        Self.modifierDisplay(modifiers) + key.uppercased()
+    }
+
+    static func modifierDisplay(_ modifiers: Int) -> String {
         var value = ""
-        if modifiers & Self.control != 0 { value += "⌃" }
-        if modifiers & Self.option != 0 { value += "⌥" }
-        if modifiers & Self.shift != 0 { value += "⇧" }
-        if modifiers & Self.command != 0 { value += "⌘" }
-        return value + key.uppercased()
+        if modifiers & control != 0 { value += "⌃" }
+        if modifiers & option != 0 { value += "⌥" }
+        if modifiers & shift != 0 { value += "⇧" }
+        if modifiers & command != 0 { value += "⌘" }
+        return value
+    }
+
+    static func key(for keyCode: UInt16) -> String? {
+        keyCodes.first { $0.value == UInt32(keyCode) }?.key
+    }
+
+    static func modifiers(from flags: NSEvent.ModifierFlags) -> Int {
+        let flags = flags.intersection(.deviceIndependentFlagsMask)
+        var result = 0
+        if flags.contains(.command) { result |= command }
+        if flags.contains(.option) { result |= option }
+        if flags.contains(.control) { result |= control }
+        if flags.contains(.shift) { result |= shift }
+        return result
     }
 
     private static let keyCodes: [String: UInt32] = [
@@ -94,7 +152,7 @@ final class GlobalHotKey {
         )
         let status = InstallEventHandler(
             GetApplicationEventTarget(),
-            clipboardHotKeyEventHandler,
+            toolsHotKeyEventHandler,
             1,
             &eventType,
             nil,
@@ -109,14 +167,17 @@ final class GlobalHotKey {
     }
 
     @discardableResult
-    func register(_ configuration: ClipboardHotKey, action: @escaping @MainActor () -> Void) -> Bool {
+    func register(_ configuration: GlobalHotKeyConfiguration, action: @escaping @MainActor () -> Void) -> Bool {
         unregister()
+        let safeModifiers = GlobalHotKeyConfiguration.command
+            | GlobalHotKeyConfiguration.option
+            | GlobalHotKeyConfiguration.control
         guard handlerInstalled,
-              configuration.modifiers != 0,
+              configuration.modifiers & safeModifiers != 0,
               let keyCode = configuration.keyCode else { return false }
         self.action = action
         var reference: EventHotKeyRef?
-        let identifier = EventHotKeyID(signature: clipboardHotKeySignature, id: 1)
+        let identifier = EventHotKeyID(signature: toolsHotKeySignature, id: 1)
         let status = RegisterEventHotKey(
             keyCode,
             configuration.carbonModifiers,
