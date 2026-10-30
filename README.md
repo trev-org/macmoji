@@ -5,6 +5,9 @@ Type `:` and a couple of letters (`:thu`) and a small picker pops up next to the
 ↑/↓ to choose, Enter or Tab to insert, Esc to dismiss. The typed `:shortcode` is replaced with
 the emoji. Typing a full `:fire:` replaces it automatically.
 
+The same inline picker opens a local clipboard history: type `:cl`, choose **Clipboard History**,
+then search and paste an earlier item without leaving the keyboard.
+
 Status: **M1 prototype.** The core logic is unit-tested; the macOS app code has not yet been
 compiled or run (it was written on Linux). See [TESTING.md](TESTING.md) and the
 plan in [docs/PLAN.md](docs/PLAN.md).
@@ -22,7 +25,7 @@ project.yml                  XcodeGen spec (the .xcodeproj is generated, not com
 Config/Signing.xcconfig      signing defaults; put your team in Config/Signing.local.xcconfig
 App/Sources/                 the macOS app (AppKit / SwiftUI / ApplicationServices / CoreGraphics)
 App/Resources/               Info.plist (LSUIElement), entitlements (no sandbox)
-MacmojiCore/                 portable Swift package: emoji data, search & ranking, trigger state machine + tests
+MacmojiCore/                 portable Swift package: emoji + clipboard models/search/persistence + tests
 scripts/make-dmg.sh          builds dist/Macmoji-<version>.dmg
 packaging/                   DMG background art, icon generator, previews
 scripts/gen-emoji.mjs        regenerates MacmojiCore/.../Resources/emoji.json from emojibase-data
@@ -139,6 +142,29 @@ emoji is inserted by a clipboard paste that saves and restores your clipboard. U
 ranking are stored in `~/Library/Application Support/macmoji/usage.json` (up to 500 distinct
 emoji). Use menu bar → **Clear Emoji History** to reset them.
 
+Clipboard settings control capture, retention (1 day, 7 days by default, 30 days, 3 months or
+unlimited), excluded source apps, and an optional global shortcut. The shortcut is **off by
+default**; when enabled its initial value is ⌘⇧V and both its key and modifiers are configurable.
+
+## Clipboard history
+- **Open it:** type `:cl`, `:clip`, `:hist`, `:clipboard` or another matching command query in the
+  normal inline picker. Selecting **Clipboard History** removes the typed `:query` before opening
+  the panel. `:clipboard:` also opens it as an exact command. Menu bar → **Clipboard History…** is
+  always available while the feature is enabled; the optional global shortcut is secondary.
+- **Captured locally:** plain text, links, file URLs, PNG/TIFF images and hex colors. Images are
+  stored as blobs with a small preview thumbnail. The source app and copied time are recorded.
+- **Privacy:** concealed, transient and auto-generated pasteboard items are ignored. Copies made
+  while an excluded app is frontmost are also ignored. 1Password, Bitwarden, Keychain Access,
+  LastPass and Dashlane are excluded by default; edit the bundle-ID list in Settings. Pause or
+  resume capture from the menu bar.
+- **Retention:** the versioned index and image blobs live under
+  `~/Library/Application Support/Macmoji/`. Duplicate content moves to the top. At most 1,000
+  unpinned entries are kept; pinned entries are exempt from age and count pruning. **Clear
+  Clipboard History…** removes only unpinned entries after confirmation.
+- **Panel controls:** type to search; filter All/Text/Images/Links/Files; ↑/↓ select; Enter pastes
+  into the app and location where the panel was opened; ⌘Enter copies without pasting; ⌘P toggles
+  pinning; ⌘Backspace deletes; Esc closes.
+
 ## Packaging (DMG)
 ```sh
 brew install xcodegen create-dmg
@@ -182,6 +208,9 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
   it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
 - Trigger rules: `:` counts only at the start of text or after whitespace, `(` or `[`; the picker
   opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.
+- The inline picker combines emoji with reusable command rows. Prefix/exact command matches lead
+  emoji and weaker command matches follow them; command rows never participate in emoji frecency.
+  Clipboard History is the first command, with the same mechanism ready for future Snippets.
 - Ranking puts matching emoji with usage history first, ordered by descending frecency. Ties and
   never-used emoji fall back to exact name → prefix → substring → fuzzy subsequence → keyword,
   then shorter matched name and database order. Frecency is
@@ -195,6 +224,10 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
   then the mouse. Electron apps get `AXManualAccessibility = true`.
 - Insertion: synthesized Backspaces, then `CGEvent.keyboardSetUnicodeString`, or a
   clipboard paste in paste-mode apps. Synthesized events are tagged so the tap ignores them.
+- Clipboard monitoring polls `NSPasteboard.changeCount` every 0.5 seconds without Accessibility.
+  Index/blob writes run on a background serial queue and flush when the app terminates. Choosing
+  a history item restores the previous app, writes the item to NSPasteboard and synthesizes ⌘V
+  using the existing Accessibility permission.
 
 ## Credits
 Emoji data from emojibase-data (MIT, © Miles Johnson). Shortcodes from emojibase's iamcal and

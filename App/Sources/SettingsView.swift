@@ -5,6 +5,7 @@ import MacmojiCore
 
 struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var clipboardHistory: ClipboardHistoryController
 
     var body: some View {
         Form {
@@ -15,6 +16,42 @@ struct SettingsView: View {
                         Text("\(previewThumb(tone))  \(tone.label)").tag(tone)
                     }
                 }
+            }
+            Section("Clipboard history") {
+                Toggle("Enable clipboard history", isOn: $settings.clipboardHistoryEnabled)
+                Picker("Keep unpinned items", selection: $settings.clipboardRetention) {
+                    ForEach(ClipboardRetention.allCases, id: \.self) {
+                        Text($0.label).tag($0)
+                    }
+                }
+                .disabled(!settings.clipboardHistoryEnabled)
+
+                Toggle("Enable global shortcut", isOn: $settings.clipboardHotKeyEnabled)
+                    .disabled(!settings.clipboardHistoryEnabled)
+                if settings.clipboardHotKeyEnabled {
+                    HStack {
+                        Text("Shortcut")
+                        Spacer()
+                        Toggle("⌃", isOn: modifierBinding(ClipboardHotKey.control))
+                        Toggle("⌥", isOn: modifierBinding(ClipboardHotKey.option))
+                        Toggle("⇧", isOn: modifierBinding(ClipboardHotKey.shift))
+                        Toggle("⌘", isOn: modifierBinding(ClipboardHotKey.command))
+                        Picker("Key", selection: $settings.clipboardHotKeyKey) {
+                            ForEach(ClipboardHotKey.availableKeys, id: \.self) { Text($0).tag($0) }
+                        }
+                        .labelsHidden()
+                        .frame(width: 58)
+                    }
+                    .toggleStyle(.button)
+                }
+                if let error = clipboardHistory.hotKeyError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+                Text("Type :cl or :clipboard to open it inline. The optional global shortcut is off by default.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Do not record clipboard items from these apps") {
+                BundleIDListEditor(items: $settings.clipboardExcludedApps)
             }
             Section("Launch at login") {
                 LaunchAtLoginControl(launch: LaunchAtLogin.shared)
@@ -29,11 +66,26 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 640)
+        .frame(width: 500, height: 780)
     }
 
     private func previewThumb(_ tone: SkinTone) -> String {
         Emoji(emoji: "👍", names: ["+1"], skins: ["👍🏻", "👍🏼", "👍🏽", "👍🏾", "👍🏿"]).rendered(tone: tone)
+    }
+
+    private func modifierBinding(_ modifier: Int) -> Binding<Bool> {
+        Binding(
+            get: { settings.clipboardHotKeyModifiers & modifier != 0 },
+            set: { enabled in
+                var value = settings.clipboardHotKeyModifiers
+                if enabled {
+                    value |= modifier
+                } else if value != modifier {
+                    value &= ~modifier
+                }
+                settings.clipboardHotKeyModifiers = value
+            }
+        )
     }
 }
 
