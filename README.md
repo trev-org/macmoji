@@ -12,9 +12,12 @@ Raycast-style snippets provide reusable multi-line text with optional expansion 
 keyword such as `;sig` to expand it in place, or type `:sn` and choose **Snippets** to search,
 preview and insert one at the original cursor.
 
-Status: **M1 prototype.** The core logic is unit-tested; the macOS app code has not yet been
-compiled or run (it was written on Linux). See [TESTING.md](TESTING.md) and the
-plan in [docs/PLAN.md](docs/PLAN.md).
+Press **⌥Space** anywhere to open **Tools**, a searchable launcher for Emoji Picker, Clipboard
+History and Snippets. Backspace on an empty search returns to the Tools list.
+
+Status: **early prototype, in daily use.** The app builds and runs on macOS 14+ (Apple silicon)
+with Xcode or Command Line Tools only, and the core logic is unit-tested in CI. See
+[TESTING.md](TESTING.md) and the plan in [docs/PLAN.md](docs/PLAN.md).
 
 - macOS 14+, menu bar only (no Dock icon), not sandboxed, not for the App Store.
 - One permission: **Accessibility**.
@@ -29,7 +32,7 @@ project.yml                  XcodeGen spec (the .xcodeproj is generated, not com
 Config/Signing.xcconfig      signing defaults; put your team in Config/Signing.local.xcconfig
 App/Sources/                 the macOS app (AppKit / SwiftUI / ApplicationServices / CoreGraphics)
 App/Resources/               Info.plist (LSUIElement), entitlements (no sandbox)
-MacmojiCore/                 portable Swift package: emoji + clipboard models/search/persistence + tests
+MacmojiCore/                 portable Swift package: emoji, clipboard, snippet and Tools models/search/persistence + tests
 scripts/make-dmg.sh          builds dist/Macmoji-<version>.dmg
 packaging/                   DMG background art, icon generator, previews
 scripts/gen-emoji.mjs        regenerates MacmojiCore/.../Resources/emoji.json from emojibase-data
