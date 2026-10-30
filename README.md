@@ -151,8 +151,9 @@ default**; when enabled its initial value is ⌘⇧V and both its key and modifi
   normal inline picker. Selecting **Clipboard History** removes the typed `:query` before opening
   the panel. `:clipboard:` also opens it as an exact command. Menu bar → **Clipboard History…** is
   always available while the feature is enabled; the optional global shortcut is secondary.
-- **Captured locally:** plain text, links, file URLs, PNG/TIFF images and hex colors. Images are
-  stored as blobs with a small preview thumbnail. The source app and copied time are recorded.
+- **Captured locally:** plain text, links, file URLs, PNG/TIFF images up to 50 MB, and hex colors.
+  Images are stored as blobs with a small preview thumbnail generated off the main thread. The
+  source app and copied time are recorded.
 - **Privacy:** concealed, transient and auto-generated pasteboard items are ignored. Copies made
   while an excluded app is frontmost are also ignored. 1Password, Bitwarden, Keychain Access,
   LastPass and Dashlane are excluded by default; edit the bundle-ID list in Settings. Pause or
