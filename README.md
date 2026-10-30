@@ -73,7 +73,7 @@ git clone https://github.com/trev-org/rev.git && cd rev
 xcodegen generate
 open Rev.xcodeproj
 ```
-In Xcode pick the **Rev** scheme and **My Mac**, then Run (⌘R). A smiley appears in the
+In Xcode pick the **Rev** scheme and **My Mac**, then Run (⌘R). A lightning bolt appears in the
 menu bar. Or from the command line:
 ```sh
 xcodebuild -project Rev.xcodeproj -scheme Rev -configuration Debug -derivedDataPath build build

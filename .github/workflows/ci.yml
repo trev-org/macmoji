@@ -19,6 +19,24 @@ jobs:
           xcodebuild -project Rev.xcodeproj -scheme Rev -configuration Debug \
             -destination 'platform=macOS' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO build
+          test -f build/Build/Products/Debug/Rev.app/Contents/Resources/Assets.car
+      - name: Build SwiftPM app bundle
+        run: |
+          ARCHS="$(uname -m)" scripts/build-app.sh
+          test -s build/Rev.app/Contents/Resources/MenuBarIcon.svg
+          ICON_PATH="$PWD/build/Rev.app/Contents/Resources/MenuBarIcon.svg" xcrun swift -e '
+          import AppKit
+          import Foundation
+          let path = ProcessInfo.processInfo.environment["ICON_PATH"]!
+          let image = NSImage(contentsOfFile: path)
+          precondition(image != nil, "MenuBarIcon.svg did not load")
+          let icon = image!
+          precondition(icon.size.width == 18 && icon.size.height == 18, "Unexpected icon size")
+          icon.isTemplate = true
+          precondition(icon.isTemplate, "Menu bar icon is not a template")
+          precondition(icon.setName(NSImage.Name("MenuBarIcon")), "Could not register icon")
+          precondition(NSImage(named: NSImage.Name("MenuBarIcon")) != nil, "Icon lookup failed")
+          '
       - name: Unit tests (RevCore)
         working-directory: RevCore
         run: swift test

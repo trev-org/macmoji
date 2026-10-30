@@ -25,6 +25,15 @@ Run from Xcode (Debug logs the caret source per app in Console: filter on `rev`)
 - [ ] On a second Mac, the unsigned DMG shows the Gatekeeper warning (expected) and the notarized one opens cleanly.
 - [ ] Release DMG workflow (tag or manual run) uploads a `Rev-dmg` artifact.
 
+### Menu bar icon
+- [ ] Build through Xcode and verify the menu bar shows the 18pt Rev lightning bolt, not the old
+  smiley. Check light mode, dark mode and the highlighted/pressed menu state; macOS should tint it.
+- [ ] Build with `scripts/build-app.sh`, confirm
+  `build/Rev.app/Contents/Resources/MenuBarIcon.svg` exists, then launch that app and verify the
+  same icon loads and tints correctly.
+- [ ] The app icon and DMG artwork still use their existing art; the menu bar glyph is not reused
+  for either one.
+
 ### Upgrade migration
 - [ ] Start with the old `Macmoji.app` data and defaults, including completed onboarding, a
   non-default skin tone/Tools shortcut, custom blocklists, snippets, clipboard history and an
@@ -66,7 +75,7 @@ Reset first: `defaults delete com.trevorgerald.rev` and
 ### Launch at login (test with the app copied to /Applications, signed as in README)
 - [ ] Settings → Launch at login toggle reflects the real state (compare System Settings → General → Login Items).
 - [ ] Turn it off in System Settings, reactivate rev / reopen Settings: toggle shows Off.
-- [ ] Toggle on, log out and back in: rev starts (smiley in menu bar), no setup window.
+- [ ] Toggle on, log out and back in: rev starts (lightning bolt in menu bar), no setup window.
 - [ ] Toggle off, log out and in: it does not start.
 - [ ] Running from DerivedData/`build/`: the "move to /Applications" tip shows; note what status register() reports.
 - [ ] Record whether macOS showed a "Background Items Added" notification or required approval.

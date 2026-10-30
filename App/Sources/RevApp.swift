@@ -5,6 +5,8 @@ import RevCore
 
 @main
 struct RevApp: App {
+    private static let menuBarIconName = "MenuBarIcon"
+
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings: AppSettings
     @StateObject private var clipboardHistory: ClipboardHistoryController
@@ -12,6 +14,7 @@ struct RevApp: App {
     @StateObject private var snippets: SnippetController
 
     init() {
+        Self.prepareMenuBarIcon()
         let migration = LegacyDataMigration.migrate()
         for error in migration.errors {
             NSLog("rev: legacy data migration failed: \(error)")
@@ -23,7 +26,7 @@ struct RevApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("rev", systemImage: "face.smiling") {
+        MenuBarExtra("rev", image: Self.menuBarIconName) {
             MenuContent()
                 .environmentObject(settings)
                 .environmentObject(AppController.shared)
@@ -31,6 +34,21 @@ struct RevApp: App {
                 .environmentObject(tools)
                 .environmentObject(snippets)
         }
+    }
+
+    private static func prepareMenuBarIcon() {
+        let name = NSImage.Name(menuBarIconName)
+        if NSImage(named: name) == nil,
+           let url = Bundle.main.url(forResource: menuBarIconName, withExtension: "svg"),
+           let image = NSImage(contentsOf: url) {
+            _ = image.setName(name)
+        }
+        guard let image = NSImage(named: name) else {
+            NSLog("rev: failed to load the menu bar icon")
+            return
+        }
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
     }
 }
 

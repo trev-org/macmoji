@@ -213,10 +213,10 @@ private struct FinishStep: View {
                 Text("Press \(shortcutDisplay) to open Tools: Emoji Picker, Clipboard History, and Snippets.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
-                Text("Open Tools from the smiley menu to use Emoji Picker, Clipboard History, and Snippets.")
+                Text("Open Tools from the lightning-bolt menu to use Emoji Picker, Clipboard History, and Snippets.")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            Text("rev lives in the menu bar (the smiley). It's off in Slack and Discord by default.")
+            Text("rev lives in the menu bar (the lightning bolt). It's off in Slack and Discord by default.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
