@@ -40,6 +40,14 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Menu → "Run setup again…" reopens setup while macmoji keeps working; finishing again changes nothing else.
 - [ ] Finish setup, then revoke Accessibility and relaunch: the separate "macmoji needs Accessibility" prompt appears (not setup).
 
+### Settings window
+- [ ] With no Dock icon present, choose menu → **Settings…** while another app is active. The
+  macmoji Settings window appears in front and accepts keyboard input.
+- [ ] Close Settings, switch to another app, and choose **Settings…** again. The same behavior
+  works repeatedly, including from a different Space.
+- [ ] Click the shortcut recorder, then close Settings without pressing a key. Typing in another
+  app is unaffected; reopening Settings shows the previous shortcut.
+
 ### Launch at login (test with the app copied to /Applications, signed as in README)
 - [ ] Settings → Launch at login toggle reflects the real state (compare System Settings → General → Login Items).
 - [ ] Turn it off in System Settings, reactivate macmoji / reopen Settings: toggle shows Off.
@@ -49,14 +57,17 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Record whether macOS showed a "Background Items Added" notification or required approval.
 
 ### Tools launcher
-- [ ] On a fresh install, quickly press and release ⌥⌘ together: Tools opens. Hold for at least
-  0.5 seconds: nothing opens. Press a non-modifier key or move/click/scroll the mouse while holding
-  ⌥⌘: nothing opens afterward and the app's normal ⌥⌘+key shortcut still works.
-- [ ] Settings → Tools launcher switches among ⌥⌘, ⌃⌥, ⇧⌘ and ⌃⌘ modifier chords. Each configured
-  chord works and the old one stops. Set the shortcut to Off and confirm no chord opens Tools.
-- [ ] Select Keyboard shortcut, click its recorder and press a modified letter. The shortcut is
-  displayed in Menu → **Tools…**, works globally through Carbon, and reports a conflict if already
-  registered by another app.
+- [ ] On a fresh install, press ⌥Space: Tools opens and menu → **Tools…** displays ⌥Space.
+- [ ] Upgrade once with the previous ⌥⌘ default saved: it changes to ⌥Space. Repeat with a custom
+  key shortcut, a custom modifier chord, and Off saved: each remains unchanged after upgrading
+  and relaunching.
+- [ ] Settings → Tools launcher switches among ⌥⌘, ⌃⌥, ⇧⌘ and ⌃⌘ modifier chords. Quickly press
+  and release each configured chord to open Tools. Holding it for at least 0.5 seconds, pressing a
+  non-modifier key, or moving/clicking/scrolling the mouse cancels it. The old shortcut stops.
+- [ ] Select Keyboard shortcut, click its recorder, and press another modified key, including
+  Space. The shortcut is displayed in Menu → **Tools…**, works globally through Carbon, and
+  reports a conflict if another app already registered it. Set the shortcut to Off and confirm
+  neither the key shortcut nor a modifier chord opens Tools.
 - [ ] Tools opens near the mouse with Emoji Picker, Clipboard History and Snippets. Search by tool
   name or keyword, navigate with ↑/↓, open with Enter/double-click, and close with Esc.
 - [ ] Open Tools from a text field, then Emoji Picker. Empty search shows frequently used emoji;
