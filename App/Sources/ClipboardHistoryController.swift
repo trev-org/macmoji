@@ -23,6 +23,7 @@ final class ClipboardHistoryController: ObservableObject {
         qos: .utility
     )
     private var previousApplication: NSRunningApplication?
+    private var pendingPasteID: UUID?
     private var cancellables = Set<AnyCancellable>()
     private var hasStarted = false
 
@@ -82,6 +83,7 @@ final class ClipboardHistoryController: ObservableObject {
 
     func showHistory(previousApplication: NSRunningApplication? = nil) {
         guard settings.clipboardHistoryEnabled else { return }
+        pendingPasteID = nil
         let candidate = previousApplication ?? NSWorkspace.shared.frontmostApplication
         if let candidate,
            !candidate.isTerminated,
@@ -116,6 +118,7 @@ final class ClipboardHistoryController: ObservableObject {
     }
 
     func flush() {
+        monitor.capturePendingChange()
         captureQueue.sync {}
         store.flush()
     }
@@ -144,7 +147,8 @@ final class ClipboardHistoryController: ObservableObject {
 
     private func record(_ captured: ClipboardCaptureContent, source: ClipboardSource) {
         captureQueue.async { [store] in
-            guard store.record(captured, source: source) != nil else { return }
+            guard let prepared = ClipboardImageProcessor.prepare(captured),
+                  store.record(prepared, source: source) != nil else { return }
             store.flush()
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated { self?.model.refresh() }
@@ -187,26 +191,75 @@ final class ClipboardHistoryController: ObservableObject {
             return
         }
         guard let item = model.selected, writeToPasteboard(item) else { return }
+        let operationID = UUID()
+        pendingPasteID = operationID
+        let expectedChangeCount = NSPasteboard.general.changeCount
         panel.hide()
         guard application.activate(options: [.activateIgnoringOtherApps]) else {
+            pendingPasteID = nil
             NSSound.beep()
             return
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [inserter] in
-            inserter.pasteCurrentClipboard()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.pasteWhenFrontmost(
+                application,
+                expectedChangeCount: expectedChangeCount,
+                operationID: operationID,
+                attemptsRemaining: 20
+            )
         }
     }
 
     private func copySelected() {
+        pendingPasteID = nil
         guard let item = model.selected, writeToPasteboard(item) else { return }
         closeAndRestoreFocus()
     }
 
     private func closeAndRestoreFocus() {
+        pendingPasteID = nil
         let application = previousApplication
         panel.hide()
         if let application, !application.isTerminated {
             application.activate(options: [.activateIgnoringOtherApps])
+        }
+    }
+
+    private func pasteWhenFrontmost(
+        _ application: NSRunningApplication,
+        expectedChangeCount: Int,
+        operationID: UUID,
+        attemptsRemaining: Int
+    ) {
+        guard pendingPasteID == operationID,
+              NSPasteboard.general.changeCount == expectedChangeCount else {
+            pendingPasteID = nil
+            return
+        }
+        guard !application.isTerminated else {
+            pendingPasteID = nil
+            NSSound.beep()
+            return
+        }
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier
+            == application.processIdentifier {
+            pendingPasteID = nil
+            inserter.pasteCurrentClipboard()
+            return
+        }
+        guard attemptsRemaining > 0 else {
+            // The item remains copied, but do not risk pasting into the wrong process.
+            pendingPasteID = nil
+            NSSound.beep()
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.pasteWhenFrontmost(
+                application,
+                expectedChangeCount: expectedChangeCount,
+                operationID: operationID,
+                attemptsRemaining: attemptsRemaining - 1
+            )
         }
     }
 

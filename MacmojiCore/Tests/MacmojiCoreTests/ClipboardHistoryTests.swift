@@ -114,6 +114,22 @@ import Testing
         XCTAssertTrue(store.allItems().first?.isPinned == true)
     }
 
+    @Test func searchingPrunesItemsThatExpiredWhileAppWasIdle() {
+        let clock = ClipboardTestClock()
+        let store = ClipboardHistoryStore(
+            configuration: ClipboardHistoryConfiguration(retention: .oneDay),
+            now: { clock.now }
+        )
+        store.record(
+            .text("expired"),
+            source: ClipboardSource(bundleIdentifier: nil, name: nil)
+        )
+        clock.advance(by: 2 * 24 * 60 * 60)
+
+        XCTAssertTrue(store.search("").isEmpty)
+        XCTAssertEqual(store.count, 0)
+    }
+
     @Test func persistenceRoundTripIncludesImageBlobsAndCleansDeletedBlobs() {
         let storage = MemoryClipboardHistoryStorage()
         let source = ClipboardSource(bundleIdentifier: "test.app", name: "Test")

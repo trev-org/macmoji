@@ -53,6 +53,7 @@ final class GlobalHotKey {
     private static weak var active: GlobalHotKey?
     private var hotKey: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
+    private var handlerInstalled = false
     private var action: (@MainActor () -> Void)?
 
     init() {
@@ -61,7 +62,7 @@ final class GlobalHotKey {
             eventClass: OSType(kEventClassKeyboard),
             eventKind: UInt32(kEventHotKeyPressed)
         )
-        InstallEventHandler(
+        let status = InstallEventHandler(
             GetApplicationEventTarget(),
             { _, event, _ in
                 guard let event else { return noErr }
@@ -75,7 +76,10 @@ final class GlobalHotKey {
                     nil,
                     &identifier
                 )
-                guard status == noErr, identifier.id == 1 else { return status }
+                guard status == noErr else { return status }
+                guard identifier.signature == 0x4D4D4348, identifier.id == 1 else {
+                    return eventNotHandledErr
+                }
                 DispatchQueue.main.async {
                     MainActor.assumeIsolated {
                         Self.active?.action?()
@@ -88,6 +92,7 @@ final class GlobalHotKey {
             nil,
             &eventHandler
         )
+        handlerInstalled = status == noErr && eventHandler != nil
     }
 
     deinit {
@@ -98,7 +103,9 @@ final class GlobalHotKey {
     @discardableResult
     func register(_ configuration: ClipboardHotKey, action: @escaping @MainActor () -> Void) -> Bool {
         unregister()
-        guard configuration.modifiers != 0, let keyCode = configuration.keyCode else { return false }
+        guard handlerInstalled,
+              configuration.modifiers != 0,
+              let keyCode = configuration.keyCode else { return false }
         self.action = action
         var reference: EventHotKeyRef?
         let identifier = EventHotKeyID(signature: 0x4D4D4348, id: 1) // "MMCH"

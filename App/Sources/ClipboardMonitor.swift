@@ -58,6 +58,10 @@ final class ClipboardMonitor {
         ignoredChangeCounts.insert(changeCount)
     }
 
+    func capturePendingChange() {
+        poll(sourceApplication: sourceApplication)
+    }
+
     private func poll(sourceApplication application: NSRunningApplication?) {
         let changeCount = pasteboard.changeCount
         guard changeCount != lastChangeCount else { return }
@@ -107,43 +111,15 @@ final class ClipboardMonitor {
     private func imageCapture(
         data: Data,
         format: ClipboardImageFormat
-    ) -> ClipboardCaptureContent {
-        let image = NSImage(data: data)
-        let representation = image?.representations.max {
-            ($0.pixelsWide * $0.pixelsHigh) < ($1.pixelsWide * $1.pixelsHigh)
-        }
+    ) -> ClipboardCaptureContent? {
+        guard data.count <= ClipboardImageProcessor.maximumImageBytes else { return nil }
         return .image(
             data: data,
-            thumbnailData: image.flatMap(Self.thumbnailPNG),
+            thumbnailData: nil,
             format: format,
-            pixelWidth: representation?.pixelsWide,
-            pixelHeight: representation?.pixelsHigh
+            pixelWidth: nil,
+            pixelHeight: nil
         )
-    }
-
-    private static func thumbnailPNG(for image: NSImage) -> Data? {
-        let maximum: CGFloat = 256
-        let original = image.size
-        guard original.width > 0, original.height > 0 else { return nil }
-        let scale = min(1, maximum / max(original.width, original.height))
-        let size = NSSize(
-            width: max(1, floor(original.width * scale)),
-            height: max(1, floor(original.height * scale))
-        )
-
-        let thumbnail = NSImage(size: size)
-        thumbnail.lockFocus()
-        NSGraphicsContext.current?.imageInterpolation = .high
-        image.draw(
-            in: NSRect(origin: .zero, size: size),
-            from: NSRect(origin: .zero, size: original),
-            operation: .copy,
-            fraction: 1
-        )
-        thumbnail.unlockFocus()
-        guard let tiff = thumbnail.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
-        return bitmap.representation(using: .png, properties: [:])
     }
 }
 #endif

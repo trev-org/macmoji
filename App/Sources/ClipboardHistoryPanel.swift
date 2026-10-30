@@ -101,6 +101,7 @@ final class ClipboardHistoryModel: ObservableObject {
     }
     @Published private(set) var items: [ClipboardItem] = []
     @Published var selection = 0
+    @Published private(set) var scrollRequest = 0
 
     private let store: ClipboardHistoryStore
 
@@ -116,7 +117,9 @@ final class ClipboardHistoryModel: ObservableObject {
     func reset() {
         query = ""
         filter = .all
+        selection = 0
         refresh()
+        scrollRequest += 1
     }
 
     func refresh() {
@@ -203,32 +206,43 @@ struct ClipboardHistoryView: View {
     }
 
     private var historyList: some View {
-        ScrollView {
-            LazyVStack(spacing: 2) {
-                ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                    if sectionStarts(at: index) {
-                        Text(item.isPinned ? "PINNED" : "RECENT")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 12)
-                            .padding(.top, index == 0 ? 8 : 12)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                        if sectionStarts(at: index) {
+                            Text(item.isPinned ? "PINNED" : "RECENT")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .padding(.top, index == 0 ? 8 : 12)
+                        }
+                        ClipboardHistoryRow(item: item, selected: index == model.selection)
+                            .id(item.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { model.select(index) }
+                            .onTapGesture(count: 2) { model.select(index); onPaste() }
                     }
-                    ClipboardHistoryRow(item: item, selected: index == model.selection)
-                        .contentShape(Rectangle())
-                        .onTapGesture { model.select(index) }
-                        .onTapGesture(count: 2) { model.select(index); onPaste() }
+                    if model.items.isEmpty {
+                        ContentUnavailableView(
+                            "No Clipboard Items",
+                            systemImage: "clipboard",
+                            description: Text("Copied items that match this search appear here.")
+                        )
+                        .padding(.top, 60)
+                    }
                 }
-                if model.items.isEmpty {
-                    ContentUnavailableView(
-                        "No Clipboard Items",
-                        systemImage: "clipboard",
-                        description: Text("Copied items that match this search appear here.")
-                    )
-                    .padding(.top, 60)
-                }
+                .padding(.horizontal, 6)
             }
-            .padding(.horizontal, 6)
+            .onChange(of: model.selection) { index in
+                guard model.items.indices.contains(index) else { return }
+                proxy.scrollTo(model.items[index].id, anchor: .center)
+            }
+            .onChange(of: model.scrollRequest) { _ in
+                guard let selected = model.selected else { return }
+                proxy.scrollTo(selected.id, anchor: .center)
+            }
         }
     }
 

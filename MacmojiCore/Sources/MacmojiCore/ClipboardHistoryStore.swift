@@ -160,6 +160,7 @@ public final class ClipboardHistoryStore: @unchecked Sendable {
         _ query: String,
         filter: ClipboardTypeFilter = .all
     ) -> [ClipboardItem] {
+        prune()
         let snapshot = allItems()
         return ClipboardHistorySearch.results(in: snapshot, query: query, filter: filter)
     }
@@ -218,8 +219,16 @@ public final class ClipboardHistoryStore: @unchecked Sendable {
 
     public func prune() {
         lock.lock()
-        storedItems = Self.pruned(storedItems, configuration: configuration, at: now())
-        storedItems = Self.sorted(storedItems)
+        let updated = Self.sorted(Self.pruned(
+            storedItems,
+            configuration: configuration,
+            at: now()
+        ))
+        guard updated != storedItems else {
+            lock.unlock()
+            return
+        }
+        storedItems = updated
         let snapshot = storedItems
         schedulePersistence(items: snapshot, blobs: [])
         lock.unlock()

@@ -61,6 +61,8 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
   (`#abc`, `#112233`, `#11223380`). Each appears with the correct type, source app and timestamp;
   image previews stay responsive and blobs exist under
   `~/Library/Application Support/Macmoji/clipboard-blobs/`.
+- [ ] A large image remains responsive while its thumbnail is prepared off-main; images over
+  50 MB are skipped.
 - [ ] Copy the same item twice with another item between: it moves to the top without duplicating.
 - [ ] Search by text, URL, file name, source app and a fuzzy subsequence. All/Text/Images/Links/Files
   filters show only the requested types.
@@ -77,7 +79,9 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
   password-manager clipboard items never appear.
 - [ ] In the panel, ↑/↓ navigate, Enter restores the original app and pastes at the original
   location, ⌘Enter copies without pasting, and Esc closes/restores focus. Test text, links, files
-  and images. Clipboard writes performed by the panel do not create duplicate history entries.
+  and images, including across Spaces; selection stays scrolled into view. If the original app
+  quits or cannot activate, the item is copied but is not pasted elsewhere. Clipboard writes
+  performed by the panel do not create duplicate history entries.
 - [ ] Quit immediately after copying, relaunch and verify the item persisted. The JSON index is
   versioned and all data remains local under Application Support/Macmoji.
 
