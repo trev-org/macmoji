@@ -64,7 +64,7 @@ struct PermissionPromptView: View {
             Text("🙂 macmoji needs Accessibility access").font(.title2).bold()
             Text("macmoji watches for ':' followed by a shortcode (like :thu) and replaces it with an emoji. To read keystrokes, swallow the picker's arrow/Enter/Tab/Esc keys, find the text cursor and type the emoji, macOS requires the Accessibility permission.")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("macmoji never runs in password fields and keeps nothing except which emoji you use (stored locally for ranking).")
+            Text("macmoji never reads typing in password fields. Emoji usage and enabled clipboard history stay local; sensitive and excluded-app clipboard items are skipped.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("1. Click “Request Access”, then “Open System Settings”.\n2. Turn on Macmoji under Privacy & Security → Accessibility.\n3. This window closes by itself once access is granted.")

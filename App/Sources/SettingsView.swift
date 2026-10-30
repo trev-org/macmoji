@@ -5,6 +5,7 @@ import MacmojiCore
 
 struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var tools: ToolsController
 
     var body: some View {
         Form {
@@ -15,6 +16,52 @@ struct SettingsView: View {
                         Text("\(previewThumb(tone))  \(tone.label)").tag(tone)
                     }
                 }
+            }
+            Section("Tools launcher") {
+                Picker("Shortcut", selection: $settings.toolsShortcutMode) {
+                    ForEach(ToolsShortcutMode.allCases, id: \.self) {
+                        Text($0.label).tag($0)
+                    }
+                }
+                if settings.toolsShortcutMode == .modifierChord {
+                    Picker("Modifier chord", selection: $settings.toolsChordModifiers) {
+                        ForEach(ModifierChordOption.available) {
+                            Text($0.label).tag($0.modifiers)
+                        }
+                    }
+                    Text("Tap and release the modifiers together. Pressing another key cancels it.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if settings.toolsShortcutMode == .regularKey {
+                    HStack {
+                        Text("Keyboard shortcut")
+                        Spacer()
+                        HotKeyRecorderView(
+                            key: $settings.toolsHotKeyKey,
+                            modifiers: $settings.toolsHotKeyModifiers
+                        )
+                        .frame(width: 140, height: 24)
+                    }
+                    Text("Click the shortcut field, then press a modified letter key.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let error = tools.hotKeyError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+            }
+            Section("Clipboard history") {
+                Toggle("Enable clipboard history", isOn: $settings.clipboardHistoryEnabled)
+                Picker("Keep unpinned items", selection: $settings.clipboardRetention) {
+                    ForEach(ClipboardRetention.allCases, id: \.self) {
+                        Text($0.label).tag($0)
+                    }
+                }
+                .disabled(!settings.clipboardHistoryEnabled)
+
+                Text("Type :cl or :clipboard to open it inline, or choose it from Tools.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Do not record clipboard items from these apps") {
+                BundleIDListEditor(items: $settings.clipboardExcludedApps)
             }
             Section("Launch at login") {
                 LaunchAtLoginControl(launch: LaunchAtLogin.shared)
@@ -29,12 +76,13 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 640)
+        .frame(width: 500, height: 780)
     }
 
     private func previewThumb(_ tone: SkinTone) -> String {
         Emoji(emoji: "👍", names: ["+1"], skins: ["👍🏻", "👍🏼", "👍🏽", "👍🏾", "👍🏿"]).rendered(tone: tone)
     }
+
 }
 
 struct BundleIDListEditor: View {

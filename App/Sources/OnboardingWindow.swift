@@ -183,7 +183,7 @@ private struct AccessibilityStep: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("To notice ':' shortcodes, use the arrow/Enter/Tab/Esc keys in the picker, find the text cursor and type the emoji, macOS requires the Accessibility permission.")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("macmoji never runs in password fields and only stores which emoji you use, locally, for ranking.")
+            Text("macmoji never reads typing in password fields. Emoji usage and enabled clipboard history are stored only on this Mac; sensitive and excluded-app clipboard items are skipped.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if model.isTrusted {
