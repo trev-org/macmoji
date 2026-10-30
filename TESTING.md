@@ -3,8 +3,9 @@
 ## Automated (CI and local)
 - `cd MacmojiCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
   frecency, picker-command matching, modifier-chord detection, tool-registry filtering, clipboard
-  classification/privacy/search/dedup/pruning, index/blob persistence, and bundled emoji JSON
-  integrity. Runs on macOS and Linux with a Swift 6 toolchain (the targets use Swift 5 language mode).
+  classification/privacy/search/dedup/pruning, index/blob persistence, snippet keyword matching/
+  word boundaries/placeholders/search/import/persistence, and bundled emoji JSON integrity. Runs
+  on macOS and Linux with a Swift 6 toolchain (the targets use Swift 5 language mode).
 - CI (`.github/workflows/ci.yml`, macos-15 runner): `xcodegen generate`, `xcodebuild build`
   (unsigned), `swift test`, and a check that `emoji.json` matches a fresh regeneration.
 
@@ -56,13 +57,15 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Select Keyboard shortcut, click its recorder and press a modified letter. The shortcut is
   displayed in Menu → **Tools…**, works globally through Carbon, and reports a conflict if already
   registered by another app.
-- [ ] Tools opens near the mouse with Emoji Picker and Clipboard History. Search by tool name or
-  keyword, navigate with ↑/↓, open with Enter/double-click, and close with Esc.
+- [ ] Tools opens near the mouse with Emoji Picker, Clipboard History and Snippets. Search by tool
+  name or keyword, navigate with ↑/↓, open with Enter/double-click, and close with Esc.
 - [ ] Open Tools from a text field, then Emoji Picker. Empty search shows frequently used emoji;
   text search uses existing frecency order. Enter restores the original app and focused field,
   inserts the chosen skin-tone-aware emoji, and restores the prior clipboard.
 - [ ] Open Clipboard History through Tools and verify its Enter action pastes into the field that
   was focused before Tools opened. Repeat with the target app on another Space.
+- [ ] Open Snippets through Tools and verify Enter inserts into the app and exact field that was
+  focused before Tools opened.
 
 ### Clipboard history
 - [ ] Type `:cl`, `:clip`, `:hist`, `:clipboard` and `:paste`: the visually distinct
@@ -98,6 +101,46 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
   performed by the panel do not create duplicate history entries.
 - [ ] Quit immediately after copying, relaunch and verify the item persisted. The JSON index is
   versioned and all data remains local under Application Support/Macmoji.
+
+### Snippets
+- [ ] Menu → **Create Snippet…** opens a focused editor. Save multi-line text with a name and
+  keyword; each placeholder-menu item is inserted. Empty names/text and a keyword already used by
+  another snippet show validation errors. Edit the snippet with ⌘E and verify its created date is
+  preserved while its modified date changes.
+- [ ] Type `:sn`, `:snippet`, `:text` and `:template`: the **Snippets** command appears without
+  changing emoji ranking. Select it with Enter, Tab and a click; the typed `:query` is removed and
+  the snippets panel opens. `:snippets:` opens it through exact command replacement.
+- [ ] Search snippets by name, keyword, body substring and fuzzy subsequence. Frequently used
+  matches rank ahead of unused matches. ↑/↓ keep the selection visible; the right side previews
+  the text after placeholder expansion.
+- [ ] Open the panel from TextEdit, then switch selection and press Enter: TextEdit is restored and
+  the snippet is pasted at the original caret. ⌘E edits, ⌘N creates, ⌘Backspace deletes and Esc
+  restores focus without inserting. If the original app quits, Macmoji does not paste elsewhere.
+- [ ] Create keywords `;sig` and `!email`. At the beginning of a document and after whitespace,
+  typing each exact keyword expands it; a partial keyword does not. With word-boundary mode on,
+  `word;sig` does not expand. Turn the boundary requirement off and confirm it does.
+- [ ] Start an emoji shortcode and a snippet keyword with punctuation (including a `:` keyword):
+  exact snippet expansion wins only when its full keyword is typed, while normal `:emoji` picker
+  and closing-colon replacement behavior remains unchanged.
+- [ ] Move focus, click, press a navigation key and use Backspace partway through a keyword; stale
+  buffered characters never trigger an expansion in the new location.
+- [ ] Disable keyword expansion: direct keywords remain untouched while **Snippets…** search and
+  insertion still work. Add TextEdit to the snippet exclusion list and confirm expansion is off
+  only there; remove it and confirm expansion resumes.
+- [ ] In a password field and with Secure Keyboard Entry enabled, snippet keywords never expand.
+  The general app blocklist also disables both emoji and snippet event-tap behavior.
+- [ ] Verify `{clipboard}`, `{date}`, `{time}`, `{datetime}`, `{day}`,
+  `{date format="MMM d, yyyy" offset="+2d"}` and `{cursor}`. Multi-line text is preserved and the
+  caret lands at `{cursor}` after insertion.
+- [ ] Before expansion, copy both text and an image. The snippet is pasted, clipboard history does
+  not record the temporary value, and the original clipboard item and all of its pasteboard types
+  are restored shortly afterward.
+- [ ] Export snippets, delete them, then import the Macmoji JSON and verify metadata/use counts
+  survive. Import a Raycast-style array of `{name, text, keyword}` and verify valid entries are
+  added while duplicate keywords are reported as skipped.
+- [ ] Quit immediately after creating or using a snippet, relaunch, and verify
+  `~/Library/Application Support/Macmoji/snippets.json` is versioned and contains the latest use
+  count and timestamps.
 
 ### Permissions and lifecycle
 - [ ] After setup, with the grant revoked: "macmoji needs Accessibility" window appears; menu shows "Needs Accessibility permission" and a "Grant Accessibility…" item.
@@ -139,7 +182,8 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
 - [ ] Slack and Discord: nothing happens (their own `:` picker works normally). Removing Slack from the blocklist enables it there.
 - [ ] Password fields (Safari login, System Settings): never opens, nothing inserted.
 - [ ] Terminal with Secure Keyboard Entry on: never opens.
-- [ ] "Enabled" toggle off in the menu: never opens.
+- [ ] "Emoji Autocomplete" toggle off in the menu: emoji picker/replacement stays off while
+  snippet inline commands and enabled keyword expansion continue to work.
 
 ### App matrix (note caret source: caret / elementFrame / mouse)
 | App | Opens | Caret placement | Insert OK | Notes |
