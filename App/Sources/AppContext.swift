@@ -36,7 +36,12 @@ final class AppContext {
 
     /// Whether the focused element is a secure text field.
     func focusedElementIsSecure() -> Bool {
-        guard let el = AXHelpers.focusedElement() else { return false }
+        focusedElementSecurity() == true
+    }
+
+    /// `nil` means the focused element could not be inspected; sensitive actions should fail closed.
+    func focusedElementSecurity() -> Bool? {
+        guard let el = AXHelpers.focusedElement() else { return nil }
         let role = AXHelpers.string(el, kAXRoleAttribute)
         let subrole = AXHelpers.string(el, kAXSubroleAttribute)
         return subrole == (kAXSecureTextFieldSubrole as String) || role == "AXSecureTextField"

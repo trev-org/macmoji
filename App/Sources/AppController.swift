@@ -29,10 +29,19 @@ final class AppController: ObservableObject {
         keywords: ["clipboard", "history", "paste"],
         systemImageName: "clipboard"
     )
+    private let snippetsCommand = PickerCommand(
+        id: "snippets",
+        name: "Snippets",
+        aliases: ["snippet", "snippets"],
+        keywords: ["snippet", "text", "template", "expand"],
+        systemImageName: "text.quote"
+    )
     private var search: PickerSearch?
     private var machine = TriggerStateMachine()
     private var toolsChord = ModifierChordStateMachine(chord: [.option, .command])
     private var toolsChordMouseOrigin: CGPoint?
+    private var snippetBuffer = SnippetKeywordBuffer()
+    private var pendingSnippetExpansionID: UUID?
     private lazy var tap = KeyTap { [unowned self] type, event in self.handle(type: type, event: event) }
     private let model = PickerModel()
     private lazy var panel = PickerPanel(model: model)
@@ -45,7 +54,7 @@ final class AppController: ObservableObject {
             let store = try EmojiStore.bundled()
             let pickerSearch = PickerSearch(
                 emojiSearch: EmojiSearch(store: store, usage: usage),
-                commands: [clipboardCommand]
+                commands: [clipboardCommand, snippetsCommand]
             )
             search = pickerSearch
             machine = TriggerStateMachine(isExactName: {
@@ -160,12 +169,22 @@ final class AppController: ObservableObject {
     }
 
     private func refreshStatus() {
+        let snippetExpansionActive = settings.snippetExpansionEnabled
+            && !settings.excludesSnippetExpansion(context.frontmostBundleID)
         if !hasStarted { statusText = "Finish setup to start"; return }
         if !isTrusted { statusText = "Needs Accessibility permission" }
         else if !tap.isRunning { statusText = "Event tap not running (relaunch macmoji)" }
-        else if !settings.enabled { statusText = "Paused" }
         else if settings.isBlocked(context.frontmostBundleID) { statusText = "Off in this app" }
-        else { statusText = "Active — type :name" }
+        else if !settings.enabled && !snippetExpansionActive {
+            statusText = "Inline snippets available — type :sn"
+        }
+        else if settings.enabled && snippetExpansionActive {
+            statusText = "Active — type :name or a snippet keyword"
+        } else if settings.enabled {
+            statusText = "Active — type :name"
+        } else {
+            statusText = "Snippet expansion active"
+        }
     }
 
     // MARK: Event handling (called from the tap; keep it fast)
@@ -173,22 +192,33 @@ final class AppController: ObservableObject {
     /// Returns true to swallow the event.
     private func handle(type: CGEventType, event: CGEvent) -> Bool {
         trackToolsShortcut(type: type, event: event)
+        pendingSnippetExpansionID = nil
         if type == .flagsChanged { return false }
 
-        if ClipboardHistoryController.shared.isShowing || ToolsController.shared.isShowing {
+        if ClipboardHistoryController.shared.isShowing
+            || ToolsController.shared.isShowing
+            || SnippetController.shared.isCapturingKeyboard {
             if pickerShown { resetTracking() }
             return false
         }
         guard type == .keyDown else {
             if Self.isMouseButtonEvent(type) {
                 // Clicks inside the picker choose a row; anything else ends tracking.
-                if pickerShown && panel.frame.contains(NSEvent.mouseLocation) { return false }
+                if pickerShown && panel.frame.contains(NSEvent.mouseLocation) {
+                    snippetBuffer.reset()
+                    return false
+                }
                 resetTracking()
             }
             return false
         }
 
-        guard settings.enabled, !settings.isBlocked(context.frontmostBundleID), !context.isSecureInputOn else {
+        let emojiEnabled = settings.enabled
+        let snippetExpansionEnabled = settings.snippetExpansionEnabled
+            && !settings.excludesSnippetExpansion(context.frontmostBundleID)
+        guard !settings.isBlocked(context.frontmostBundleID),
+              context.frontmostBundleID != Bundle.main.bundleIdentifier,
+              !context.isSecureInputOn else {
             resetTracking()
             return false
         }
@@ -198,12 +228,14 @@ final class AppController: ObservableObject {
 
         if pickerShown {
             switch keyCode {
-            case kVK_UpArrow: model.move(-1); return true
-            case kVK_DownArrow: model.move(1); return true
+            case kVK_UpArrow:
+                snippetBuffer.reset(); model.move(-1); return true
+            case kVK_DownArrow:
+                snippetBuffer.reset(); model.move(1); return true
             case kVK_Return, kVK_ANSI_KeypadEnter, kVK_Tab:
                 commit(index: model.selection); return true
             case kVK_Escape:
-                machine.cancel(); hidePicker(); return true
+                snippetBuffer.reset(); machine.cancel(); hidePicker(); return true
             default: break
             }
         }
@@ -215,6 +247,11 @@ final class AppController: ObservableObject {
 
         switch keyCode {
         case kVK_Delete:
+            if snippetExpansionEnabled {
+                snippetBuffer.backspace()
+            } else {
+                snippetBuffer.reset()
+            }
             apply(machine.handle(.backspace))
             return false
         case kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow, kVK_Home, kVK_End,
@@ -230,7 +267,31 @@ final class AppController: ObservableObject {
             resetTracking()
             return false
         }
+        if !snippetExpansionEnabled { snippetBuffer.reset() }
         for ch in typed {
+            if snippetExpansionEnabled,
+               let match = snippetBuffer.type(
+                   ch,
+                   index: SnippetController.shared.keywordIndex,
+                   requiresWordBoundary: settings.snippetRequiresWordBoundary
+               ) {
+                guard context.focusedElementSecurity() == false else {
+                    resetTracking()
+                    return false
+                }
+                let targetPID = context.frontmostPID
+                resetTracking()
+                let operationID = UUID()
+                pendingSnippetExpansionID = operationID
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                    guard let self,
+                          self.pendingSnippetExpansionID == operationID,
+                          self.context.frontmostPID == targetPID else { return }
+                    self.pendingSnippetExpansionID = nil
+                    SnippetController.shared.expandKeyword(match)
+                }
+                return false
+            }
             if ch == ":" && machine.state == .idle && context.focusedElementIsSecure() {
                 resetTracking()
                 return false
@@ -330,12 +391,14 @@ final class AppController: ObservableObject {
             showPicker(query: query)
         case .autoReplace(let name, let deleteCount):
             hidePicker()
-            if settings.clipboardHistoryEnabled,
-               let command = search?.exactCommand(named: name) {
+            if let command = search?.exactCommand(named: name),
+               isCommandAvailable(command) {
                 commit(command: command, deleteCount: deleteCount, delay: 0.05)
                 return
             }
+            guard settings.enabled else { return }
             guard let emoji = search?.emojiSearch.store.emoji(named: name) else { return }
+            snippetBuffer.reset()
             machine.didCommit()
             usage.record(emoji.emoji)
             let text = emoji.rendered(tone: settings.skinTone)
@@ -350,11 +413,10 @@ final class AppController: ObservableObject {
     private func showPicker(query: String) {
         guard let search else { return }
         var results = search.search(query, emojiLimit: 8)
-        if !settings.clipboardHistoryEnabled {
-            results.removeAll {
-                if case .command = $0 { return true }
-                return false
-            }
+        results.removeAll {
+            if case .emoji = $0 { return !settings.enabled }
+            if case .command(let match) = $0 { return !isCommandAvailable(match.command) }
+            return false
         }
         guard !results.isEmpty else { hidePicker(); return }
         model.set(query: query, results: results, tone: settings.skinTone)
@@ -381,6 +443,8 @@ final class AppController: ObservableObject {
     }
 
     private func resetTracking() {
+        pendingSnippetExpansionID = nil
+        snippetBuffer.reset()
         apply(machine.handle(.reset))
         hidePicker()
     }
@@ -402,6 +466,7 @@ final class AppController: ObservableObject {
     }
 
     private func commit(emoji: Emoji, deleteCount: Int) {
+        snippetBuffer.reset()
         machine.didCommit()
         hidePicker()
         usage.record(emoji.emoji)
@@ -412,21 +477,41 @@ final class AppController: ObservableObject {
         }
     }
 
-    /// Executes a reusable inline picker command. Future commands (such as Snippets) register here.
+    /// Executes a reusable inline picker command.
     private func commit(command: PickerCommand, deleteCount: Int, delay: TimeInterval) {
-        guard settings.clipboardHistoryEnabled, command.id == clipboardCommand.id else { return }
+        guard isCommandAvailable(command) else { return }
         let targetApplication = NSWorkspace.shared.frontmostApplication
         let focusedElement = AXHelpers.focusedElement()
+        let clipboardCommandID = clipboardCommand.id
+        let snippetsCommandID = snippetsCommand.id
+        snippetBuffer.reset()
         machine.didCommit()
         hidePicker()
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inserter] in
             inserter.deleteCharacters(deleteCount)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
-                ClipboardHistoryController.shared.showHistory(
-                    previousApplication: targetApplication,
-                    focusedElement: focusedElement
-                )
+                if command.id == clipboardCommandID {
+                    ClipboardHistoryController.shared.showHistory(
+                        previousApplication: targetApplication,
+                        focusedElement: focusedElement
+                    )
+                } else if command.id == snippetsCommandID {
+                    SnippetController.shared.showSnippets(
+                        previousApplication: targetApplication
+                    )
+                }
             }
+        }
+    }
+
+    private func isCommandAvailable(_ command: PickerCommand) -> Bool {
+        switch command.id {
+        case clipboardCommand.id:
+            return settings.clipboardHistoryEnabled
+        case snippetsCommand.id:
+            return true
+        default:
+            return false
         }
     }
 }
