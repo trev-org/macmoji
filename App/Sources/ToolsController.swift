@@ -158,10 +158,16 @@ final class ToolsController: ObservableObject {
 
     private func openSelectedTool() {
         guard let tool = toolModel.selected else { return }
+        let toolLaunchContext = ToolLaunchContext { [weak self] in
+            MainActor.assumeIsolated {
+                self?.returnToTools(selecting: tool.id)
+            }
+        }
         switch tool.id {
         case "emoji":
             toolsPanel.hide()
             emojiModel.reset(tone: settings.skinTone)
+            emojiPanel.toolLaunchContext = toolLaunchContext
             activePanel = .emoji
             emojiPanel.showOnActiveScreen()
 
@@ -174,7 +180,8 @@ final class ToolsController: ObservableObject {
             activePanel = .none
             ClipboardHistoryController.shared.showHistory(
                 previousApplication: previousApplication,
-                focusedElement: previousFocusedElement
+                focusedElement: previousFocusedElement,
+                toolLaunchContext: toolLaunchContext
             )
 
         case "snippets":
@@ -182,12 +189,20 @@ final class ToolsController: ObservableObject {
             activePanel = .none
             SnippetController.shared.showSnippets(
                 previousApplication: previousApplication,
-                focusedElement: previousFocusedElement
+                focusedElement: previousFocusedElement,
+                toolLaunchContext: toolLaunchContext
             )
 
         default:
             break
         }
+    }
+
+    private func returnToTools(selecting toolID: String) {
+        pendingInsertionID = nil
+        toolModel.select(id: toolID)
+        activePanel = .tools
+        toolsPanel.showOnActiveScreen()
     }
 
     private func handleToolsKey(_ event: NSEvent) -> Bool {

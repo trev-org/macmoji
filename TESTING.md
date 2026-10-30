@@ -2,10 +2,11 @@
 
 ## Automated (CI and local)
 - `cd MacmojiCore && swift test` — trigger state machine table tests, onboarding step sequencing and launch decision, search ranking tiers,
-  frecency, picker-command matching, modifier-chord detection, tool-registry filtering, clipboard
-  classification/privacy/search/dedup/pruning, index/blob persistence, snippet keyword matching/
-  word boundaries/placeholders/search/import/persistence, and bundled emoji JSON integrity. Runs
-  on macOS and Linux with a Swift 6 toolchain (the targets use Swift 5 language mode).
+  frecency, picker-command matching, modifier-chord detection, tool-registry filtering, launcher
+  back-navigation policy, clipboard classification/privacy/search/dedup/pruning, index/blob
+  persistence, snippet keyword matching/word boundaries/placeholders/search/import/persistence,
+  and bundled emoji JSON integrity. Runs on macOS and Linux with a Swift 6 toolchain (the targets
+  use Swift 5 language mode).
 - CI (`.github/workflows/ci.yml`, macos-15 runner): `xcodegen generate`, `xcodebuild build`
   (unsigned), `swift test`, and a check that `emoji.json` matches a fresh regeneration.
 
@@ -70,6 +71,12 @@ Reset first: `defaults delete com.trevorgerald.macmoji` and
   neither the key shortcut nor a modifier chord opens Tools.
 - [ ] Tools opens near the mouse with Emoji Picker, Clipboard History and Snippets. Search by tool
   name or keyword, navigate with ↑/↓, open with Enter/double-click, and close with Esc.
+- [ ] Open each tool from Tools. With text in its search field, Backspace deletes one character
+  and stays in the tool. With the search empty, Backspace returns to Tools with that tool still
+  selected. Repeat after filtering the Tools list and confirm its query and selection are kept.
+- [ ] Open Clipboard History and Snippets directly from the menu bar and through `:cl` / `:sn`.
+  Backspace in an empty search does not open Tools; the back path exists only for launcher-opened
+  tools.
 - [ ] Open Tools from a text field, then Emoji Picker. Empty search shows frequently used emoji;
   text search uses existing frecency order. Enter restores the original app and focused field,
   inserts the chosen skin-tone-aware emoji, and restores the prior clipboard.

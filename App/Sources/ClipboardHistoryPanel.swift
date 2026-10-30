@@ -10,6 +10,7 @@ final class SearchableListPanel: NSPanel {
     let preferredSize: NSSize
     var handleKeyEvent: ((NSEvent) -> Bool)?
     var onHide: (() -> Void)?
+    var toolLaunchContext: ToolLaunchContext?
 
     init(size: NSSize = SearchableListPanel.panelSize) {
         preferredSize = size
@@ -54,11 +55,18 @@ final class SearchableListPanel: NSPanel {
     }
 
     func hide() {
+        toolLaunchContext = nil
         orderOut(nil)
         onHide?()
     }
 
     override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, shouldReturnToTools(for: event) {
+            let returnToLauncher = toolLaunchContext?.returnToLauncher
+            hide()
+            returnToLauncher?()
+            return
+        }
         if event.type == .keyDown, handleKeyEvent?(event) == true { return }
         super.sendEvent(event)
     }
@@ -90,6 +98,19 @@ final class SearchableListPanel: NSPanel {
             if let field = firstTextField(in: subview) { return field }
         }
         return nil
+    }
+
+    private func shouldReturnToTools(for event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let actionModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        let isPlainBackspace = Int(event.keyCode) == kVK_Delete
+            && flags.intersection(actionModifiers).isEmpty
+        let query = contentView.flatMap { firstTextField(in: $0)?.stringValue }
+        return ToolBackNavigationPolicy.shouldReturnToLauncher(
+            hasLauncherDestination: toolLaunchContext != nil,
+            query: query,
+            isPlainBackspace: isPlainBackspace
+        )
     }
 }
 
