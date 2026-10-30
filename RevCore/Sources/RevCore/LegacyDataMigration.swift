@@ -65,7 +65,7 @@ public enum LegacyDataMigration {
             return Result(copiedPaths: [], importedDefaultsKeys: [], errors: [])
         }
 
-        let destination = applicationSupport.appendingPathComponent(
+        let destination = applicationSupportDirectory.appendingPathComponent(
             currentDirectoryName,
             isDirectory: true
         )
@@ -73,7 +73,7 @@ public enum LegacyDataMigration {
         var copiedPaths: [String] = []
         var errors: [String] = []
         for directoryName in legacyDirectoryNames {
-            let source = applicationSupport.appendingPathComponent(
+            let source = applicationSupportDirectory.appendingPathComponent(
                 directoryName,
                 isDirectory: true
             )
