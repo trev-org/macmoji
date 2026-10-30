@@ -51,11 +51,11 @@ public struct SnippetKeywordIndex: Sendable {
         let characters: [Character]
     }
 
-    fileprivate let candidates: [Candidate]
+    fileprivate let candidatesByLastCharacter: [Character: [Candidate]]
     fileprivate let longestKeywordCount: Int
 
     public init(snippets: [Snippet]) {
-        candidates = snippets.compactMap { snippet in
+        let candidates = snippets.compactMap { snippet in
             guard let keyword = snippet.keyword, !keyword.isEmpty else { return nil }
             return Candidate(
                 snippetID: snippet.id,
@@ -69,9 +69,12 @@ public struct SnippetKeywordIndex: Sendable {
             return $0.keyword < $1.keyword
         }
         longestKeywordCount = candidates.first?.characters.count ?? 0
+        candidatesByLastCharacter = Dictionary(grouping: candidates) {
+            $0.characters[$0.characters.count - 1]
+        }
     }
 
-    public var isEmpty: Bool { candidates.isEmpty }
+    public var isEmpty: Bool { candidatesByLastCharacter.isEmpty }
 }
 
 /// Tracks recently typed characters and reports exact keyword suffix matches.
@@ -96,7 +99,7 @@ public struct SnippetKeywordBuffer: Sendable {
         snippets: [Snippet],
         requiresWordBoundary: Bool
     ) -> SnippetKeywordMatch? {
-        type(
+        return type(
             character,
             index: SnippetKeywordIndex(snippets: snippets),
             requiresWordBoundary: requiresWordBoundary
@@ -119,9 +122,9 @@ public struct SnippetKeywordBuffer: Sendable {
             characters.removeFirst(characters.count - retainedCount)
         }
 
-        for candidate in index.candidates {
+        for candidate in index.candidatesByLastCharacter[character] ?? [] {
             guard characters.count >= candidate.characters.count,
-                  Array(characters.suffix(candidate.characters.count)) == candidate.characters else {
+                  suffixMatches(candidate.characters) else {
                 continue
             }
             if requiresWordBoundary, characters.count > candidate.characters.count {
@@ -135,6 +138,14 @@ public struct SnippetKeywordBuffer: Sendable {
             )
         }
         return nil
+    }
+
+    private func suffixMatches(_ suffix: [Character]) -> Bool {
+        let start = characters.count - suffix.count
+        for offset in suffix.indices where characters[start + offset] != suffix[offset] {
+            return false
+        }
+        return true
     }
 
     private static func isWordCharacter(_ character: Character) -> Bool {

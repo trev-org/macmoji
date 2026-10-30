@@ -42,6 +42,7 @@ final class AppController: ObservableObject {
     private var toolsChordMouseOrigin: CGPoint?
     private var snippetBuffer = SnippetKeywordBuffer()
     private var pendingSnippetExpansionID: UUID?
+    private var pendingPickerCommandID: UUID?
     private lazy var tap = KeyTap { [unowned self] type, event in self.handle(type: type, event: event) }
     private let model = PickerModel()
     private lazy var panel = PickerPanel(model: model)
@@ -193,6 +194,7 @@ final class AppController: ObservableObject {
     private func handle(type: CGEventType, event: CGEvent) -> Bool {
         trackToolsShortcut(type: type, event: event)
         pendingSnippetExpansionID = nil
+        pendingPickerCommandID = nil
         if type == .flagsChanged { return false }
 
         if ClipboardHistoryController.shared.isShowing
@@ -286,7 +288,8 @@ final class AppController: ObservableObject {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
                     guard let self,
                           self.pendingSnippetExpansionID == operationID,
-                          self.context.frontmostPID == targetPID else { return }
+                          self.context.frontmostPID == targetPID,
+                          self.context.focusedElementSecurity() == false else { return }
                     self.pendingSnippetExpansionID = nil
                     SnippetController.shared.expandKeyword(match)
                 }
@@ -444,6 +447,7 @@ final class AppController: ObservableObject {
 
     private func resetTracking() {
         pendingSnippetExpansionID = nil
+        pendingPickerCommandID = nil
         snippetBuffer.reset()
         apply(machine.handle(.reset))
         hidePicker()
@@ -482,14 +486,25 @@ final class AppController: ObservableObject {
         guard isCommandAvailable(command) else { return }
         let targetApplication = NSWorkspace.shared.frontmostApplication
         let focusedElement = AXHelpers.focusedElement()
+        let targetPID = context.frontmostPID
         let clipboardCommandID = clipboardCommand.id
         let snippetsCommandID = snippetsCommand.id
+        let operationID = UUID()
+        pendingPickerCommandID = operationID
         snippetBuffer.reset()
         machine.didCommit()
         hidePicker()
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inserter] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, inserter] in
+            guard let self,
+                  self.pendingPickerCommandID == operationID,
+                  self.context.frontmostPID == targetPID,
+                  self.context.focusedElementSecurity() == false else { return }
             inserter.deleteCharacters(deleteCount)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in
+                guard let self,
+                      self.pendingPickerCommandID == operationID,
+                      self.context.frontmostPID == targetPID else { return }
+                self.pendingPickerCommandID = nil
                 if command.id == clipboardCommandID {
                     ClipboardHistoryController.shared.showHistory(
                         previousApplication: targetApplication,
