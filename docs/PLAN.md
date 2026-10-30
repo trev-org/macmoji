@@ -65,10 +65,11 @@ An `NSPanel` subclass with `[.nonactivatingPanel, .borderless]`, `level = .popUp
 - **emojibase-data** (MIT; https://github.com/milesj/emojibase/blob/master/LICENSE). Shortcode presets: `iamcal` (aliased `slack`; comes from Cal Henderson's emoji-data; no skin-tone codes, may lag the newest Unicode), `github`, `emojibase`, `cldr` (https://emojibase.dev/docs/shortcodes/). Slack has no official list, so iamcal is the best approximation.
 - Alternatives: github/gemoji (MIT, GitHub-style names), iamcal/emoji-data directly (MIT **[license UNVERIFIED this session]**).
 - Plan: iamcal names first, then github and emojibase aliases merged. Apply skin tone via emojibase `skins` for the chosen default tone (Slack's `::skin-tone-2` style as an optional suffix).
-- Search: exact shortcode > prefix > substring > subsequence fuzzy > keyword. Match tier is
-  always compared before frecency; within a tier use `log2(count + 1) × 0.5^(age / 7 days)`,
-  persisted as capped JSON in Application Support, then matched-name length. ~2k entries, so a
-  linear scan is fine.
+- Search: any matching emoji with usage history ranks first by
+  `log2(count + 1) × 0.5^(age / 7 days)`. Equal scores and never-used emoji fall back to exact
+  shortcode > prefix > substring > subsequence fuzzy > keyword, then matched-name length.
+  History is persisted as capped JSON in Application Support. ~2k entries, so a linear scan is
+  fine.
 
 ### Custom Slack emoji
 `emoji.list` needs the `emoji:read` scope with a bot or user token (https://docs.slack.dev/reference/methods/emoji.list, https://docs.slack.dev/reference/scopes/emoji.read.md). The response maps name→image URL or `alias:`. Outside Slack, an image only works in rich-text editors that accept pasted images (Mail, Notes, Google Docs); it fails in plain text fields. Inside Slack, Slack's own picker already handles them. **Recommendation: not in v1.** Possible v2: insert `:name:` text when the frontmost app is Slack, or paste an image in rich-text apps.

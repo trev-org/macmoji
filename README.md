@@ -182,12 +182,14 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
   it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
 - Trigger rules: `:` counts only at the start of text or after whitespace, `(` or `[`; the picker
   opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.
-- Ranking is lexicographic: exact name → prefix → substring → fuzzy subsequence → keyword first,
-  then frecency within that tier, then shorter matched name and database order. Frecency is
-  `log2(useCount + 1) × 0.5^(daysSinceLastUse / 7)`. The logarithm prevents runaway frequency,
-  while one inactive week halves the score. Because the match tier is compared first, usage can
-  never push a weaker match above a stronger one. Query-free core searches return used emoji in
-  frecency order; the inline picker still waits for two characters to avoid opening on every `:`.
+- Ranking puts matching emoji with usage history first, ordered by descending frecency. Ties and
+  never-used emoji fall back to exact name → prefix → substring → fuzzy subsequence → keyword,
+  then shorter matched name and database order. Frecency is
+  `log2(useCount + 1) × 0.5^(daysSinceLastUse / 7)`, so a frequently chosen weaker match can rank
+  above an unused exact name. The logarithm prevents runaway frequency, while one inactive week
+  halves the score. This affects picker results only; closing-colon auto-replacement still requires
+  an exact shortcode. Query-free core searches return used emoji in frecency order; the inline
+  picker still waits for two characters to avoid opening on every `:`.
 - The picker is a non-activating `NSPanel` hosting SwiftUI, placed via
   `kAXBoundsForRangeParameterizedAttribute`, falling back to the focused element's frame and
   then the mouse. Electron apps get `AXManualAccessibility = true`.
