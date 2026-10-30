@@ -31,6 +31,8 @@ final class AppController: ObservableObject {
     )
     private var search: PickerSearch?
     private var machine = TriggerStateMachine()
+    private var toolsChord = ModifierChordStateMachine(chord: [.option, .command])
+    private var toolsChordMouseOrigin: CGPoint?
     private lazy var tap = KeyTap { [unowned self] type, event in self.handle(type: type, event: event) }
     private let model = PickerModel()
     private lazy var panel = PickerPanel(model: model)
@@ -61,8 +63,12 @@ final class AppController: ObservableObject {
         context.onAppChanged = { [unowned self] in self.resetTracking(); self.refreshStatus() }
         tap.onDisabled = { NSLog("macmoji: event tap was disabled by macOS; re-enabled") }
         settings.objectWillChange.sink { [weak self] _ in
-            DispatchQueue.main.async { self?.refreshStatus() }
+            DispatchQueue.main.async {
+                self?.refreshStatus()
+                self?.synchronizeToolsChord()
+            }
         }.store(in: &cancellables)
+        synchronizeToolsChord()
 
         onboarding.onFinish = { [unowned self] in
             self.settings.onboardingCompleted = true
@@ -131,6 +137,14 @@ final class AppController: ObservableObject {
         usage.flush()
     }
 
+    func searchEmoji(_ query: String, limit: Int = 12) -> [EmojiSearch.Result] {
+        search?.emojiSearch.search(query, limit: limit) ?? []
+    }
+
+    func recordEmojiUsage(_ emoji: Emoji) {
+        usage.record(emoji.emoji)
+    }
+
     private func startTap() {
         isTrusted = AXIsProcessTrusted()
         if !tap.start() { NSLog("macmoji: CGEvent.tapCreate failed") }
@@ -158,14 +172,19 @@ final class AppController: ObservableObject {
 
     /// Returns true to swallow the event.
     private func handle(type: CGEventType, event: CGEvent) -> Bool {
-        if ClipboardHistoryController.shared.isShowing {
+        trackToolsShortcut(type: type, event: event)
+        if type == .flagsChanged { return false }
+
+        if ClipboardHistoryController.shared.isShowing || ToolsController.shared.isShowing {
             if pickerShown { resetTracking() }
             return false
         }
         guard type == .keyDown else {
-            // Mouse click: clicks inside the picker choose a row; anything else ends tracking.
-            if pickerShown && panel.frame.contains(NSEvent.mouseLocation) { return false }
-            resetTracking()
+            if Self.isMouseButtonEvent(type) {
+                // Clicks inside the picker choose a row; anything else ends tracking.
+                if pickerShown && panel.frame.contains(NSEvent.mouseLocation) { return false }
+                resetTracking()
+            }
             return false
         }
 
@@ -219,6 +238,86 @@ final class AppController: ObservableObject {
             apply(machine.handle(.character(ch)))
         }
         return false
+    }
+
+    private func synchronizeToolsChord() {
+        let modifiers = ShortcutModifiers(
+            rawValue: UInt8(truncatingIfNeeded: settings.toolsChordModifiers)
+        )
+        if !modifiers.isEmpty {
+            toolsChord.reset(chord: modifiers)
+            toolsChordMouseOrigin = nil
+        }
+    }
+
+    private func trackToolsShortcut(type: CGEventType, event: CGEvent) {
+        guard settings.toolsShortcutMode == .modifierChord else {
+            toolsChord.interrupt()
+            return
+        }
+
+        switch type {
+        case .flagsChanged:
+            let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+            if !Self.modifierKeyCodes.contains(keyCode) {
+                toolsChord.interrupt()
+            }
+            let modifiers = Self.shortcutModifiers(from: event.flags)
+            if let origin = toolsChordMouseOrigin {
+                let location = event.location
+                let deltaX = location.x - origin.x
+                let deltaY = location.y - origin.y
+                if deltaX * deltaX + deltaY * deltaY > 1 {
+                    toolsChord.interrupt()
+                }
+            }
+            if modifiers.isEmpty {
+                toolsChordMouseOrigin = nil
+            } else if toolsChordMouseOrigin == nil {
+                toolsChordMouseOrigin = event.location
+            }
+            let action = toolsChord.flagsChanged(
+                modifiers: modifiers,
+                at: TimeInterval(event.timestamp) / 1_000_000_000
+            )
+            if action == .trigger {
+                if pickerShown { resetTracking() }
+                DispatchQueue.main.async {
+                    ToolsController.shared.showTools()
+                }
+            }
+
+        case .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel:
+            toolsChord.interrupt()
+
+        default:
+            break
+        }
+    }
+
+    private static func shortcutModifiers(from flags: CGEventFlags) -> ShortcutModifiers {
+        var result: ShortcutModifiers = []
+        if flags.contains(.maskCommand) { result.insert(.command) }
+        if flags.contains(.maskAlternate) { result.insert(.option) }
+        if flags.contains(.maskControl) { result.insert(.control) }
+        if flags.contains(.maskShift) { result.insert(.shift) }
+        return result
+    }
+
+    private static let modifierKeyCodes: Set<Int> = [
+        kVK_Command, kVK_RightCommand,
+        kVK_Option, kVK_RightOption,
+        kVK_Control, kVK_RightControl,
+        kVK_Shift, kVK_RightShift,
+    ]
+
+    private static func isMouseButtonEvent(_ type: CGEventType) -> Bool {
+        switch type {
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            return true
+        default:
+            return false
+        }
     }
 
     private func apply(_ action: TriggerStateMachine.Action) {
@@ -317,13 +416,15 @@ final class AppController: ObservableObject {
     private func commit(command: PickerCommand, deleteCount: Int, delay: TimeInterval) {
         guard settings.clipboardHistoryEnabled, command.id == clipboardCommand.id else { return }
         let targetApplication = NSWorkspace.shared.frontmostApplication
+        let focusedElement = AXHelpers.focusedElement()
         machine.didCommit()
         hidePicker()
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inserter] in
             inserter.deleteCharacters(deleteCount)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
                 ClipboardHistoryController.shared.showHistory(
-                    previousApplication: targetApplication
+                    previousApplication: targetApplication,
+                    focusedElement: focusedElement
                 )
             }
         }

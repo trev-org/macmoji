@@ -5,7 +5,7 @@ import MacmojiCore
 
 struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
-    @EnvironmentObject var clipboardHistory: ClipboardHistoryController
+    @EnvironmentObject var tools: ToolsController
 
     var body: some View {
         Form {
@@ -17,6 +17,37 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Tools launcher") {
+                Picker("Shortcut", selection: $settings.toolsShortcutMode) {
+                    ForEach(ToolsShortcutMode.allCases, id: \.self) {
+                        Text($0.label).tag($0)
+                    }
+                }
+                if settings.toolsShortcutMode == .modifierChord {
+                    Picker("Modifier chord", selection: $settings.toolsChordModifiers) {
+                        ForEach(ModifierChordOption.available) {
+                            Text($0.label).tag($0.modifiers)
+                        }
+                    }
+                    Text("Tap and release the modifiers together. Pressing another key cancels it.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if settings.toolsShortcutMode == .regularKey {
+                    HStack {
+                        Text("Keyboard shortcut")
+                        Spacer()
+                        HotKeyRecorderView(
+                            key: $settings.toolsHotKeyKey,
+                            modifiers: $settings.toolsHotKeyModifiers
+                        )
+                        .frame(width: 140, height: 24)
+                    }
+                    Text("Click the shortcut field, then press a modified letter key.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let error = tools.hotKeyError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+            }
             Section("Clipboard history") {
                 Toggle("Enable clipboard history", isOn: $settings.clipboardHistoryEnabled)
                 Picker("Keep unpinned items", selection: $settings.clipboardRetention) {
@@ -26,28 +57,7 @@ struct SettingsView: View {
                 }
                 .disabled(!settings.clipboardHistoryEnabled)
 
-                Toggle("Enable global shortcut", isOn: $settings.clipboardHotKeyEnabled)
-                    .disabled(!settings.clipboardHistoryEnabled)
-                if settings.clipboardHotKeyEnabled {
-                    HStack {
-                        Text("Shortcut")
-                        Spacer()
-                        Toggle("⌃", isOn: modifierBinding(ClipboardHotKey.control))
-                        Toggle("⌥", isOn: modifierBinding(ClipboardHotKey.option))
-                        Toggle("⇧", isOn: modifierBinding(ClipboardHotKey.shift))
-                        Toggle("⌘", isOn: modifierBinding(ClipboardHotKey.command))
-                        Picker("Key", selection: $settings.clipboardHotKeyKey) {
-                            ForEach(ClipboardHotKey.availableKeys, id: \.self) { Text($0).tag($0) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 58)
-                    }
-                    .toggleStyle(.button)
-                }
-                if let error = clipboardHistory.hotKeyError {
-                    Text(error).font(.caption).foregroundStyle(.red)
-                }
-                Text("Type :cl or :clipboard to open it inline. The optional global shortcut is off by default.")
+                Text("Type :cl or :clipboard to open it inline, or choose it from Tools.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Do not record clipboard items from these apps") {
@@ -73,20 +83,6 @@ struct SettingsView: View {
         Emoji(emoji: "👍", names: ["+1"], skins: ["👍🏻", "👍🏼", "👍🏽", "👍🏾", "👍🏿"]).rendered(tone: tone)
     }
 
-    private func modifierBinding(_ modifier: Int) -> Binding<Bool> {
-        Binding(
-            get: { settings.clipboardHotKeyModifiers & modifier != 0 },
-            set: { enabled in
-                var value = settings.clipboardHotKeyModifiers
-                if enabled {
-                    value |= modifier
-                } else if value != modifier {
-                    value &= ~modifier
-                }
-                settings.clipboardHotKeyModifiers = value
-            }
-        )
-    }
 }
 
 struct BundleIDListEditor: View {

@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import ApplicationServices
 import Carbon.HIToolbox
 import Combine
 import Dispatch
@@ -9,20 +10,19 @@ import MacmojiCore
 final class ClipboardHistoryController: ObservableObject {
     static let shared = ClipboardHistoryController()
 
-    @Published private(set) var hotKeyError: String?
     @Published private(set) var isShowing = false
 
     let model: ClipboardHistoryModel
     private let settings = AppSettings.shared
     private let store: ClipboardHistoryStore
     private let monitor = ClipboardMonitor()
-    private let globalHotKey = GlobalHotKey()
     private let inserter = Inserter()
     private let captureQueue = DispatchQueue(
         label: "com.trevorgerald.macmoji.clipboard-capture",
         qos: .utility
     )
     private var previousApplication: NSRunningApplication?
+    private var previousFocusedElement: AXUIElement?
     private var pendingPasteID: UUID?
     private var cancellables = Set<AnyCancellable>()
     private var hasStarted = false
@@ -81,7 +81,10 @@ final class ClipboardHistoryController: ObservableObject {
         }.store(in: &cancellables)
     }
 
-    func showHistory(previousApplication: NSRunningApplication? = nil) {
+    func showHistory(
+        previousApplication: NSRunningApplication? = nil,
+        focusedElement: AXUIElement? = nil
+    ) {
         guard settings.clipboardHistoryEnabled else { return }
         pendingPasteID = nil
         let candidate = previousApplication ?? NSWorkspace.shared.frontmostApplication
@@ -89,8 +92,10 @@ final class ClipboardHistoryController: ObservableObject {
            !candidate.isTerminated,
            candidate.processIdentifier != ProcessInfo.processInfo.processIdentifier {
             self.previousApplication = candidate
+            previousFocusedElement = focusedElement ?? AXHelpers.focusedElement()
         } else {
             self.previousApplication = nil
+            previousFocusedElement = nil
         }
         model.reset()
         isShowing = true
@@ -129,20 +134,6 @@ final class ClipboardHistoryController: ObservableObject {
             maximumUnpinnedEntries: 1_000
         ))
         model.refresh()
-
-        guard settings.clipboardHistoryEnabled, settings.clipboardHotKeyEnabled else {
-            globalHotKey.unregister()
-            hotKeyError = nil
-            return
-        }
-        let configuration = ClipboardHotKey(
-            key: settings.clipboardHotKeyKey,
-            modifiers: settings.clipboardHotKeyModifiers
-        )
-        let registered = globalHotKey.register(configuration) { [weak self] in
-            self?.showHistory()
-        }
-        hotKeyError = registered ? nil : "Could not register \(configuration.displayString). It may be in use."
     }
 
     private func record(_ captured: ClipboardCaptureContent, source: ClipboardSource) {
@@ -244,6 +235,17 @@ final class ClipboardHistoryController: ObservableObject {
         }
         if NSWorkspace.shared.frontmostApplication?.processIdentifier
             == application.processIdentifier {
+            if let previousFocusedElement {
+                guard AXUIElementSetAttributeValue(
+                    previousFocusedElement,
+                    kAXFocusedAttribute as CFString,
+                    kCFBooleanTrue
+                ) == .success else {
+                    pendingPasteID = nil
+                    NSSound.beep()
+                    return
+                }
+            }
             pendingPasteID = nil
             inserter.pasteCurrentClipboard()
             return

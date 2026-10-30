@@ -143,14 +143,27 @@ ranking are stored in `~/Library/Application Support/macmoji/usage.json` (up to 
 emoji). Use menu bar → **Clear Emoji History** to reset them.
 
 Clipboard settings control capture, retention (1 day, 7 days by default, 30 days, 3 months or
-unlimited), excluded source apps, and an optional global shortcut. The shortcut is **off by
-default**; when enabled its initial value is ⌘⇧V and both its key and modifiers are configurable.
+unlimited), and excluded source apps.
+
+## Tools launcher
+Tap and release **⌥⌘** together in under half a second to open Tools. Pressing any normal key or
+using the mouse while the modifiers are down cancels the tap, so existing ⌥⌘+key shortcuts pass
+through unchanged. Settings can switch to another modifier chord (⌃⌥, ⇧⌘ or ⌃⌘), record a regular
+modified letter shortcut through Carbon, or disable the shortcut. Menu bar → **Tools…** always
+shows the current shortcut when one is enabled.
+
+Tools is a searchable registry designed for more entries later. It currently contains:
+- **Emoji Picker:** standalone emoji search using the same frecency ranking as the inline picker.
+  An empty query shows frequently used emoji. Enter restores the previously focused app/field and
+  inserts the selected emoji through the existing clipboard-paste path.
+- **Clipboard History:** opens the existing history panel while preserving the app and focused
+  field where Tools was invoked.
 
 ## Clipboard history
 - **Open it:** type `:cl`, `:clip`, `:hist`, `:clipboard` or another matching command query in the
   normal inline picker. Selecting **Clipboard History** removes the typed `:query` before opening
   the panel. `:clipboard:` also opens it as an exact command. Menu bar → **Clipboard History…** is
-  always available while the feature is enabled; the optional global shortcut is secondary.
+  always available while the feature is enabled, and the Tools launcher provides another entry.
 - **Captured locally:** plain text, links, file URLs, PNG/TIFF images up to 50 MB, and hex colors.
   Images are stored as blobs with a small preview thumbnail generated off the main thread. The
   source app and copied time are recorded.
@@ -204,9 +217,10 @@ cd scripts && npm install && node gen-emoji.mjs
 Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
 
 ## How it works
-- A single blocking `CGEventTap` (session, keyDown and mouse-down) feeds typed characters to
-  `TriggerStateMachine` (MacmojiCore). It never swallows `:` or letters; while the picker is open
-  it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
+- A single blocking `CGEventTap` (session, keyboard/modifier and mouse events) feeds typed characters to
+  `TriggerStateMachine` (MacmojiCore). It also observes `flagsChanged` and mouse activity for the
+  modifier-only Tools shortcut. It never swallows the shortcut events, `:` or letters; while the
+  picker is open it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
 - Trigger rules: `:` counts only at the start of text or after whitespace, `(` or `[`; the picker
   opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.
 - The inline picker combines emoji with reusable command rows. Prefix/exact command matches lead
