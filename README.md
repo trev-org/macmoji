@@ -151,11 +151,10 @@ exclude selected apps by bundle ID. Clipboard settings control capture, retentio
 by default, 30 days, 3 months or unlimited), and excluded source apps.
 
 ## Tools launcher
-Tap and release **⌥⌘** together in under half a second to open Tools. Pressing any normal key or
-using the mouse while the modifiers are down cancels the tap, so existing ⌥⌘+key shortcuts pass
-through unchanged. Settings can switch to another modifier chord (⌃⌥, ⇧⌘ or ⌃⌘), record a regular
-modified letter shortcut through Carbon, or disable the shortcut. Menu bar → **Tools…** always
-shows the current shortcut when one is enabled.
+Press **⌥Space** to open Tools. Settings can record another modified key, switch to a
+modifier-only chord (⌥⌘, ⌃⌥, ⇧⌘ or ⌃⌘), or disable the shortcut. Existing installs that still
+use the previous ⌥⌘ default migrate to ⌥Space once; custom shortcuts and Off remain unchanged.
+Menu bar → **Tools…** always shows the current shortcut when one is enabled.
 
 Tools is a searchable registry designed for more entries later. It currently contains:
 - **Emoji Picker:** standalone emoji search using the same frecency ranking as the inline picker.
@@ -165,6 +164,10 @@ Tools is a searchable registry designed for more entries later. It currently con
   field where Tools was invoked.
 - **Snippets:** opens snippet search while preserving the app and focused field where Tools was
   invoked.
+
+Inside a tool opened from Tools, Backspace on an empty search field returns to the Tools list with
+the originating tool still selected. A nonempty search receives Backspace normally. Direct entry
+points such as `:cl`, `:sn`, or the menu bar do not add this launcher-only back path.
 
 ## Snippets
 - **Open and manage:** type `:sn` or `:snippet` in the normal inline picker, choose **Snippets**
@@ -246,8 +249,9 @@ Pinned to `emojibase-data` 18.0.0 in `scripts/package.json`.
 
 ## How it works
 - A single blocking `CGEventTap` (session, keyboard/modifier and mouse events) feeds typed characters to
-  `TriggerStateMachine` (MacmojiCore). It also observes `flagsChanged` and mouse activity for the
-  modifier-only Tools shortcut. It never swallows the shortcut events, `:` or letters; while the
+  `TriggerStateMachine` (MacmojiCore). The default ⌥Space Tools shortcut is registered through
+  Carbon; when a modifier-only Tools chord is configured, the event tap observes `flagsChanged`
+  and mouse activity without swallowing those events. It never swallows `:` or letters; while the
   picker is open it swallows ↑ ↓ Enter Tab Esc. The tap re-enables itself when macOS disables it.
 - Trigger rules: `:` counts only at the start of text or after whitespace, `(` or `[`; the picker
   opens after 2+ chars of `[a-z0-9_+-]`; space, `/` or a digit right after `:` cancel.

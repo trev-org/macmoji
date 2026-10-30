@@ -37,6 +37,11 @@ final class ToolLauncherModel: ObservableObject {
         selection = index
     }
 
+    func select(id: String) {
+        guard let index = results.firstIndex(where: { $0.id == id }) else { return }
+        selection = index
+    }
+
     func move(_ delta: Int) {
         guard !results.isEmpty else { return }
         selection = (selection + delta + results.count) % results.count

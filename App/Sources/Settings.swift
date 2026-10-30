@@ -20,6 +20,7 @@ final class AppSettings: ObservableObject {
         "com.apple.Terminal",
         "com.googlecode.iterm2",
     ]
+    private static let toolsShortcutMigrationVersionKey = "toolsShortcutMigrationVersion"
 
     private let defaults: UserDefaults
 
@@ -69,6 +70,8 @@ final class AppSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        Self.migrateToolsShortcutPreferences(in: defaults)
+        let shortcutDefaults = ToolsShortcutPreferencesMigration.currentDefault
         defaults.register(defaults: [
             "enabled": true,
             "blocklist": Self.defaultBlocklist,
@@ -78,11 +81,10 @@ final class AppSettings: ObservableObject {
             "clipboardHistoryPaused": false,
             "clipboardRetention": ClipboardRetention.sevenDays.rawValue,
             "clipboardExcludedApps": ClipboardPrivacy.defaultExcludedBundleIdentifiers,
-            "toolsShortcutMode": ToolsShortcutMode.modifierChord.rawValue,
-            "toolsChordModifiers":
-                GlobalHotKeyConfiguration.option | GlobalHotKeyConfiguration.command,
-            "toolsHotKeyKey": "V",
-            "toolsHotKeyModifiers": GlobalHotKeyConfiguration.defaultModifiers,
+            "toolsShortcutMode": shortcutDefaults.mode.rawValue,
+            "toolsChordModifiers": Int(shortcutDefaults.chordModifiers.rawValue),
+            "toolsHotKeyKey": shortcutDefaults.hotKeyKey,
+            "toolsHotKeyModifiers": Int(shortcutDefaults.hotKeyModifiers.rawValue),
             "snippetExpansionEnabled": true,
             "snippetRequiresWordBoundary": true,
             "snippetExcludedApps": [],
@@ -100,20 +102,70 @@ final class AppSettings: ObservableObject {
             ?? ClipboardPrivacy.defaultExcludedBundleIdentifiers
         toolsShortcutMode = ToolsShortcutMode(
             rawValue: defaults.string(forKey: "toolsShortcutMode") ?? ""
-        ) ?? .modifierChord
+        ) ?? shortcutDefaults.mode
         let chordModifiers = defaults.integer(forKey: "toolsChordModifiers")
         toolsChordModifiers = chordModifiers == 0
-            ? GlobalHotKeyConfiguration.option | GlobalHotKeyConfiguration.command
+            ? Int(shortcutDefaults.chordModifiers.rawValue)
             : chordModifiers
-        toolsHotKeyKey = defaults.string(forKey: "toolsHotKeyKey") ?? "V"
+        toolsHotKeyKey = defaults.string(forKey: "toolsHotKeyKey")
+            ?? shortcutDefaults.hotKeyKey
         let hotKeyModifiers = defaults.integer(forKey: "toolsHotKeyModifiers")
         toolsHotKeyModifiers = hotKeyModifiers == 0
-            ? GlobalHotKeyConfiguration.defaultModifiers
+            ? Int(shortcutDefaults.hotKeyModifiers.rawValue)
             : hotKeyModifiers
         snippetExpansionEnabled = defaults.bool(forKey: "snippetExpansionEnabled")
         snippetRequiresWordBoundary = defaults.bool(forKey: "snippetRequiresWordBoundary")
         snippetExcludedApps = defaults.stringArray(forKey: "snippetExcludedApps") ?? []
         onboardingCompleted = defaults.bool(forKey: OnboardingFlow.completedDefaultsKey)
+    }
+
+    private static func migrateToolsShortcutPreferences(in defaults: UserDefaults) {
+        let storedVersion = defaults.object(forKey: toolsShortcutMigrationVersionKey) == nil
+            ? nil
+            : defaults.integer(forKey: toolsShortcutMigrationVersionKey)
+        let storedMode = defaults.string(forKey: "toolsShortcutMode")
+            .flatMap(ToolsShortcutMode.init(rawValue:))
+        let storedChordModifiers = storedModifiers(
+            in: defaults,
+            forKey: "toolsChordModifiers"
+        )
+        let storedHotKeyModifiers = storedModifiers(
+            in: defaults,
+            forKey: "toolsHotKeyModifiers"
+        )
+
+        guard let migrated = ToolsShortcutPreferencesMigration.migrate(
+            fromVersion: storedVersion,
+            storedMode: storedMode,
+            storedChordModifiers: storedChordModifiers,
+            storedHotKeyKey: defaults.string(forKey: "toolsHotKeyKey"),
+            storedHotKeyModifiers: storedHotKeyModifiers
+        ) else { return }
+
+        defaults.set(migrated.mode.rawValue, forKey: "toolsShortcutMode")
+        defaults.set(
+            Int(migrated.chordModifiers.rawValue),
+            forKey: "toolsChordModifiers"
+        )
+        defaults.set(migrated.hotKeyKey, forKey: "toolsHotKeyKey")
+        defaults.set(
+            Int(migrated.hotKeyModifiers.rawValue),
+            forKey: "toolsHotKeyModifiers"
+        )
+        defaults.set(
+            ToolsShortcutPreferencesMigration.currentVersion,
+            forKey: toolsShortcutMigrationVersionKey
+        )
+    }
+
+    private static func storedModifiers(
+        in defaults: UserDefaults,
+        forKey key: String
+    ) -> ShortcutModifiers? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        let value = defaults.integer(forKey: key)
+        guard value != 0 else { return nil }
+        return ShortcutModifiers(rawValue: UInt8(truncatingIfNeeded: value))
     }
 
     func isBlocked(_ bundleID: String?) -> Bool {

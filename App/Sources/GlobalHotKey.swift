@@ -33,11 +33,7 @@ private func toolsHotKeyEventHandler(
     return noErr
 }
 
-enum ToolsShortcutMode: String, CaseIterable {
-    case disabled
-    case modifierChord
-    case regularKey
-
+extension ToolsShortcutMode {
     var label: String {
         switch self {
         case .disabled: return "Off"
@@ -77,8 +73,7 @@ struct GlobalHotKeyConfiguration {
     static let option = Int(ShortcutModifiers.option.rawValue)
     static let control = Int(ShortcutModifiers.control.rawValue)
     static let shift = Int(ShortcutModifiers.shift.rawValue)
-    static let defaultModifiers = command | shift
-    static let availableKeys = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init)
+    static let availableKeys = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init) + ["SPACE"]
 
     let key: String
     let modifiers: Int
@@ -97,7 +92,9 @@ struct GlobalHotKeyConfiguration {
     }
 
     var displayString: String {
-        Self.modifierDisplay(modifiers) + key.uppercased()
+        let normalizedKey = key.uppercased()
+        let keyDisplay = normalizedKey == "SPACE" ? "Space" : normalizedKey
+        return Self.modifierDisplay(modifiers) + keyDisplay
     }
 
     static func modifierDisplay(_ modifiers: Int) -> String {
@@ -133,6 +130,7 @@ struct GlobalHotKeyConfiguration {
         "S": UInt32(kVK_ANSI_S), "T": UInt32(kVK_ANSI_T), "U": UInt32(kVK_ANSI_U),
         "V": UInt32(kVK_ANSI_V), "W": UInt32(kVK_ANSI_W), "X": UInt32(kVK_ANSI_X),
         "Y": UInt32(kVK_ANSI_Y), "Z": UInt32(kVK_ANSI_Z),
+        "SPACE": UInt32(kVK_Space),
     ]
 }
 

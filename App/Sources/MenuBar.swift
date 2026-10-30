@@ -36,7 +36,7 @@ struct MenuContent: View {
             Button("Grant Accessibility…") { controller.showPermissionPrompt() }
         }
         Button("Run setup again…") { controller.showSetup() }
-        SettingsLink { Text("Settings…") }
+        Button("Settings…") { controller.showSettings() }
             .keyboardShortcut(",")
         Button("Clear Emoji History") { controller.clearEmojiHistory() }
         Divider()

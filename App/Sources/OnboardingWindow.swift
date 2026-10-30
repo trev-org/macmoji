@@ -105,7 +105,7 @@ struct OnboardingView: View {
                 case .skinTone: SkinToneStep(settings: model.settings)
                 case .launchAtLogin: LaunchStep(launch: model.launch)
                 case .accessibility: AccessibilityStep(model: model)
-                case .finish: FinishStep()
+                case .finish: FinishStep(settings: model.settings)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -201,15 +201,38 @@ private struct AccessibilityStep: View {
 }
 
 private struct FinishStep: View {
+    @ObservedObject var settings: AppSettings
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("🎉").font(.system(size: 48))
             Text("Try typing **:thu** in any text field, then press Enter.")
             Text("↑/↓ choose · Enter or Tab insert · Esc dismiss · type `:fire:` to auto-replace.")
                 .font(.callout).foregroundStyle(.secondary)
+            if let shortcutDisplay {
+                Text("Press \(shortcutDisplay) to open Tools: Emoji Picker, Clipboard History, and Snippets.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                Text("Open Tools from the smiley menu to use Emoji Picker, Clipboard History, and Snippets.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
             Text("macmoji lives in the menu bar (the smiley). It's off in Slack and Discord by default.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var shortcutDisplay: String? {
+        switch settings.toolsShortcutMode {
+        case .disabled:
+            return nil
+        case .modifierChord:
+            return GlobalHotKeyConfiguration.modifierDisplay(settings.toolsChordModifiers)
+        case .regularKey:
+            return GlobalHotKeyConfiguration(
+                key: settings.toolsHotKeyKey,
+                modifiers: settings.toolsHotKeyModifiers
+            ).displayString
         }
     }
 }
