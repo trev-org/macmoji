@@ -2,6 +2,36 @@
 import AppKit
 import Carbon.HIToolbox
 
+private let clipboardHotKeySignature: OSType = 0x4D4D4348 // "MMCH"
+
+private func clipboardHotKeyEventHandler(
+    _ nextHandler: EventHandlerCallRef?,
+    _ event: EventRef?,
+    _ userData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let event else { return OSStatus(eventNotHandledErr) }
+    var identifier = EventHotKeyID()
+    let status = GetEventParameter(
+        event,
+        EventParamName(kEventParamDirectObject),
+        EventParamType(typeEventHotKeyID),
+        nil,
+        MemoryLayout<EventHotKeyID>.size,
+        nil,
+        &identifier
+    )
+    guard status == noErr else { return status }
+    guard identifier.signature == clipboardHotKeySignature, identifier.id == 1 else {
+        return OSStatus(eventNotHandledErr)
+    }
+    DispatchQueue.main.async {
+        MainActor.assumeIsolated {
+            GlobalHotKey.invokeActiveHandler()
+        }
+    }
+    return noErr
+}
+
 struct ClipboardHotKey {
     static let command = 1 << 0
     static let shift = 1 << 1
@@ -50,7 +80,7 @@ struct ClipboardHotKey {
 
 @MainActor
 final class GlobalHotKey {
-    private static weak var active: GlobalHotKey?
+    fileprivate static weak var active: GlobalHotKey?
     private var hotKey: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     private var handlerInstalled = false
@@ -64,29 +94,7 @@ final class GlobalHotKey {
         )
         let status = InstallEventHandler(
             GetApplicationEventTarget(),
-            { _, event, _ in
-                guard let event else { return noErr }
-                var identifier = EventHotKeyID()
-                let status = GetEventParameter(
-                    event,
-                    EventParamName(kEventParamDirectObject),
-                    EventParamType(typeEventHotKeyID),
-                    nil,
-                    MemoryLayout<EventHotKeyID>.size,
-                    nil,
-                    &identifier
-                )
-                guard status == noErr else { return status }
-                guard identifier.signature == 0x4D4D4348, identifier.id == 1 else {
-                    return eventNotHandledErr
-                }
-                DispatchQueue.main.async {
-                    MainActor.assumeIsolated {
-                        Self.active?.action?()
-                    }
-                }
-                return noErr
-            },
+            clipboardHotKeyEventHandler,
             1,
             &eventType,
             nil,
@@ -108,7 +116,7 @@ final class GlobalHotKey {
               let keyCode = configuration.keyCode else { return false }
         self.action = action
         var reference: EventHotKeyRef?
-        let identifier = EventHotKeyID(signature: 0x4D4D4348, id: 1) // "MMCH"
+        let identifier = EventHotKeyID(signature: clipboardHotKeySignature, id: 1)
         let status = RegisterEventHotKey(
             keyCode,
             configuration.carbonModifiers,
@@ -125,6 +133,10 @@ final class GlobalHotKey {
         if let hotKey { UnregisterEventHotKey(hotKey) }
         hotKey = nil
         action = nil
+    }
+
+    fileprivate static func invokeActiveHandler() {
+        active?.action?()
     }
 }
 #endif

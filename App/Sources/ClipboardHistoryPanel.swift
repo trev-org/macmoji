@@ -46,7 +46,7 @@ final class SearchableListPanel: NSPanel {
             y: visible.midY - Self.panelSize.height / 2
         )
         setFrame(NSRect(origin: origin, size: Self.panelSize), display: true)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         makeKeyAndOrderFront(nil)
         focusFirstTextField()
     }
@@ -235,11 +235,11 @@ struct ClipboardHistoryView: View {
                 }
                 .padding(.horizontal, 6)
             }
-            .onChange(of: model.selection) { index in
+            .onChange(of: model.selection) { _, index in
                 guard model.items.indices.contains(index) else { return }
                 proxy.scrollTo(model.items[index].id, anchor: .center)
             }
-            .onChange(of: model.scrollRequest) { _ in
+            .onChange(of: model.scrollRequest) {
                 guard let selected = model.selected else { return }
                 proxy.scrollTo(selected.id, anchor: .center)
             }
