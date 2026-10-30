@@ -200,7 +200,7 @@ final class AppController: ObservableObject {
         if ClipboardHistoryController.shared.isShowing
             || ToolsController.shared.isShowing
             || SnippetController.shared.isCapturingKeyboard {
-            if pickerShown { resetTracking() }
+            resetTracking()
             return false
         }
         guard type == .keyDown else {
@@ -345,7 +345,7 @@ final class AppController: ObservableObject {
                 at: TimeInterval(event.timestamp) / 1_000_000_000
             )
             if action == .trigger {
-                if pickerShown { resetTracking() }
+                resetTracking()
                 DispatchQueue.main.async {
                     ToolsController.shared.showTools()
                 }
@@ -512,7 +512,8 @@ final class AppController: ObservableObject {
                     )
                 } else if command.id == snippetsCommandID {
                     SnippetController.shared.showSnippets(
-                        previousApplication: targetApplication
+                        previousApplication: targetApplication,
+                        focusedElement: focusedElement
                     )
                 }
             }

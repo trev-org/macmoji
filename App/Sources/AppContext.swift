@@ -42,12 +42,18 @@ final class AppContext {
     /// `nil` means the focused element could not be inspected; sensitive actions should fail closed.
     func focusedElementSecurity() -> Bool? {
         guard let el = AXHelpers.focusedElement() else { return nil }
-        guard let role = AXHelpers.string(el, kAXRoleAttribute) else { return nil }
+        guard case .value(let role) = AXHelpers.stringResult(el, kAXRoleAttribute) else {
+            return nil
+        }
         if role == "AXSecureTextField" { return true }
-        let subrole = AXHelpers.string(el, kAXSubroleAttribute)
-        if subrole == (kAXSecureTextFieldSubrole as String) { return true }
-        if role == (kAXTextFieldRole as String), subrole == nil { return nil }
-        return false
+        switch AXHelpers.stringResult(el, kAXSubroleAttribute) {
+        case .value(let subrole):
+            return subrole == (kAXSecureTextFieldSubrole as String)
+        case .noValue:
+            return false
+        case .failure:
+            return nil
+        }
     }
 
     /// Electron builds its AX tree lazily; setting AXManualAccessibility on the app element turns it on.
@@ -67,6 +73,12 @@ final class AppContext {
 }
 
 enum AXHelpers {
+    enum StringResult {
+        case value(String)
+        case noValue
+        case failure
+    }
+
     static let systemWide: AXUIElement = {
         let el = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(el, 0.15)
@@ -83,9 +95,16 @@ enum AXHelpers {
     }
 
     static func string(_ el: AXUIElement, _ attr: String) -> String? {
+        guard case .value(let value) = stringResult(el, attr) else { return nil }
+        return value
+    }
+
+    static func stringResult(_ el: AXUIElement, _ attr: String) -> StringResult {
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(el, attr as CFString, &value) == .success else { return nil }
-        return value as? String
+        let result = AXUIElementCopyAttributeValue(el, attr as CFString, &value)
+        if result == .noValue || result == .attributeUnsupported { return .noValue }
+        guard result == .success, let string = value as? String else { return .failure }
+        return .value(string)
     }
 
     static func axValue(_ el: AXUIElement, _ attr: String) -> AXValue? {

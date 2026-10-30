@@ -45,6 +45,7 @@ public enum SnippetStoreError: Error, Equatable, LocalizedError {
     case missingSnippet
     case invalidImport
     case unsupportedVersion(Int)
+    case persistenceUnavailable(String)
 
     public var errorDescription: String? {
         switch self {
@@ -56,6 +57,8 @@ public enum SnippetStoreError: Error, Equatable, LocalizedError {
         case .invalidImport: return "This file is not a supported snippets JSON file."
         case .unsupportedVersion(let version):
             return "Snippet file version \(version) is not supported."
+        case .persistenceUnavailable(let message):
+            return message
         }
     }
 }
@@ -165,6 +168,7 @@ public final class SnippetStore: @unchecked Sendable {
 
     @discardableResult
     public func create(name: String, text: String, keyword: String?) throws -> Snippet {
+        try ensurePersistenceAvailable()
         lock.lock()
         do {
             let fields = try normalizedFields(name: name, text: text, keyword: keyword)
@@ -195,6 +199,7 @@ public final class SnippetStore: @unchecked Sendable {
         text: String,
         keyword: String?
     ) throws -> Snippet {
+        try ensurePersistenceAvailable()
         lock.lock()
         do {
             guard let index = storedSnippets.firstIndex(where: { $0.id == id }) else {
@@ -263,6 +268,7 @@ public final class SnippetStore: @unchecked Sendable {
 
     @discardableResult
     public func importData(_ data: Data) throws -> SnippetImportSummary {
+        try ensurePersistenceAvailable()
         let decoder = JSONDecoder()
         let source: ImportSource
         if let payload = try? decoder.decode(Payload.self, from: data) {
@@ -404,6 +410,18 @@ public final class SnippetStore: @unchecked Sendable {
     private var isPersistenceBlocked: Bool {
         persistenceStateLock.lock(); defer { persistenceStateLock.unlock() }
         return persistenceBlocked
+    }
+
+    private func ensurePersistenceAvailable() throws {
+        persistenceStateLock.lock()
+        let blocked = persistenceBlocked
+        let message = storedPersistenceError
+        persistenceStateLock.unlock()
+        if blocked {
+            throw SnippetStoreError.persistenceUnavailable(
+                message ?? "Snippet persistence is unavailable."
+            )
+        }
     }
 
     private func recordPersistenceError(_ message: String) {
