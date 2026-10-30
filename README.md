@@ -165,6 +165,10 @@ Tools is a searchable registry designed for more entries later. It currently con
 - **Snippets:** opens snippet search while preserving the app and focused field where Tools was
   invoked.
 
+Inside a tool opened from Tools, Backspace on an empty search field returns to the Tools list with
+the originating tool still selected. A nonempty search receives Backspace normally. Direct entry
+points such as `:cl`, `:sn`, or the menu bar do not add this launcher-only back path.
+
 ## Snippets
 - **Open and manage:** type `:sn` or `:snippet` in the normal inline picker, choose **Snippets**
   from Tools, or use menu bar → **Snippets…**. Search covers name, keyword and text, with

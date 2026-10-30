@@ -73,9 +73,11 @@ final class SnippetController: ObservableObject {
 
     func showSnippets(
         previousApplication: NSRunningApplication? = nil,
-        focusedElement: AXUIElement? = nil
+        focusedElement: AXUIElement? = nil,
+        toolLaunchContext: ToolLaunchContext? = nil
     ) {
         pendingInsertionID = nil
+        panel.toolLaunchContext = toolLaunchContext
         let candidate = previousApplication ?? NSWorkspace.shared.frontmostApplication
         if let candidate,
            !candidate.isTerminated,
